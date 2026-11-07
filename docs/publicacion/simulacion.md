@@ -2,7 +2,8 @@
 
 **Estado:** simulado, **no publicado**. No se creó ningún commit de sincronización,
 no se actualizó `docs/publicacion/estado.json` y no se hizo push. `origin/main`
-sigue donde estaba antes de esta auditoría.
+sigue donde estaba antes de esta auditoría. El cambio de herramientas sí quedó
+commiteado localmente en la copia (`f90e2f3`), sin empujarlo.
 
 Se eligió la tercera alternativa: corregir la lógica de sincronización y
 saneamiento. No se modificó `buscador/rules.py` a mano ni se agregó a
@@ -87,14 +88,22 @@ Controles:
 - Puerta de datos sensibles sobre el árbol completo: **0 hallazgos**.
 - Saneado aplicado en 5 archivos nuevos que traían datos personales del
   original; luego de sanear, 0 hallazgos.
-- Pruebas dentro del clon (`pytest -q`): **339 superadas** en la primera
-  simulación completa; con las 22 pruebas nuevas ya incorporadas, la suite de
-  la copia pasa **270/270** antes de sincronizar.
-- Huella del árbol: `fa5c5737d75ff991`, **idéntica** al repetir la simulación
-  con y sin pruebas. Dos ejecuciones independientes dan el mismo árbol.
+- Pruebas dentro del clon (`pytest -q`): **358 superadas** en la simulación
+  final (ya con las 22 pruebas nuevas dentro del clon); la primera corrida,
+  antes de commitear el cambio de herramientas, había dado 339. La suite de la
+  copia sin sincronizar pasa **270/270**.
+- Huella del árbol **`4a4cf33872c83da3`**, idéntica en dos ejecuciones
+  independientes (con y sin pruebas). La huella `fa5c5737d75ff991` de la
+  primera tanda correspondía al árbol **antes** de commitear las propias
+  herramientas; al pasar a formar parte del clon, el árbol cambió y con él la
+  huella. Dentro de un mismo estado del repositorio, la simulación es
+  reproducible.
+- Verificación final de la copia real (`publicar.py verificar`): 0 hallazgos y
+  270/270 pruebas.
 
-La simulación no modificó el repositorio real: el registro y el HEAD quedaron
-iguales, y la raíz activa se restauró al salir.
+La simulación no modificó el repositorio real: el registro sigue en `78a9d7a`,
+el HEAD sigue en `f90e2f3`, el árbol quedó limpio y la raíz activa se restauró
+al salir.
 
 ## 4. Pruebas de regresión agregadas
 
@@ -128,4 +137,4 @@ para que el archivo de pruebas no dispare la puerta que audita.
   que el bloqueo desapareció, pero no se publicó nada.
 - Los cambios de esta auditoría (`tools/publicar.py`,
   `tools/publicacion/saneado.py`, `tests/test_publicacion.py` y este informe)
-  se commitean localmente en la copia publicable; no se empujan.
+  quedaron en el commit local `f90e2f3` de la copia publicable; no se empujaron.
