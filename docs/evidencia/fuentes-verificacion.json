@@ -1,0 +1,392 @@
+{
+  "fecha": "2026-11-06T21:50:01Z",
+  "limite_por_fuente": 20,
+  "perfil": {
+    "version": "perfil-demo-1",
+    "origen": "sintetico_demostracion"
+  },
+  "rules_version": "rules-1.1.0",
+  "fuentes": [
+    {
+      "source_id": "F01",
+      "nombre": "We Work Remotely",
+      "metodo": "rss",
+      "endpoint": "https://weworkremotely.com/remote-jobs.rss",
+      "parser_version": "wwr-1.1.0",
+      "estado": "success",
+      "http_status": null,
+      "aceptada": true,
+      "observaciones": 16,
+      "relevantes": 2,
+      "elegibles": 0,
+      "incompatibles": 14,
+      "porcentaje_relevante": 12.5,
+      "con_empresa": 16,
+      "con_region": 16,
+      "con_salario": 0,
+      "categorias": {
+        "VA/Data Entry": 1,
+        "Customer Support": 1
+      },
+      "muestra": [
+        {
+          "titulo": "MEDICAL VIRTUAL ASSISTANT",
+          "empresa": "Vital Virtuals Global HR Solutions LLC",
+          "region": "Latin America Only",
+          "categoria": "VA/Data Entry",
+          "elegibilidad": "doubtful",
+          "score": 86.7,
+          "url": "https://weworkremotely.com/remote-jobs/vital-virtuals-global-hr-solutions-llc-medical-virtual-assistant"
+        },
+        {
+          "titulo": "IT Consultant - Solutions Architect - Cloud CRM (Remote)",
+          "empresa": "Veeva Systems",
+          "region": "Anywhere in the World",
+          "categoria": "Customer Support",
+          "elegibilidad": "doubtful",
+          "score": 37.5,
+          "url": "https://weworkremotely.com/remote-jobs/veeva-systems-it-consultant-solutions-architect-cloud-crm-remote"
+        }
+      ],
+      "error": null,
+      "duracion_ms": 2631.5,
+      "particiones": [
+        {
+          "clave": "general",
+          "estado": "success",
+          "tomados": 6
+        },
+        {
+          "clave": "soporte",
+          "estado": "success",
+          "tomados": 6
+        },
+        {
+          "clave": "negocio",
+          "estado": "success",
+          "tomados": 4
+        }
+      ]
+    },
+    {
+      "source_id": "F02",
+      "nombre": "Himalayas",
+      "metodo": "api-json",
+      "endpoint": "https://himalayas.app/jobs/api",
+      "parser_version": "himalayas-1.0.0",
+      "estado": "success",
+      "http_status": 200,
+      "aceptada": true,
+      "observaciones": 20,
+      "relevantes": 0,
+      "elegibles": 0,
+      "incompatibles": 20,
+      "porcentaje_relevante": 0.0,
+      "con_empresa": 20,
+      "con_region": 20,
+      "con_salario": 10,
+      "categorias": {},
+      "muestra": [],
+      "error": null,
+      "duracion_ms": 277.9,
+      "particiones": null
+    },
+    {
+      "source_id": "F03",
+      "nombre": "Jobicy",
+      "metodo": "api-json",
+      "endpoint": "https://jobicy.com/api/v2/remote-jobs",
+      "parser_version": "jobicy-1.1.0",
+      "estado": "success",
+      "http_status": null,
+      "aceptada": true,
+      "observaciones": 18,
+      "relevantes": 0,
+      "elegibles": 0,
+      "incompatibles": 18,
+      "porcentaje_relevante": 0.0,
+      "con_empresa": 18,
+      "con_region": 18,
+      "con_salario": 10,
+      "categorias": {},
+      "muestra": [],
+      "error": null,
+      "duracion_ms": 3466.1,
+      "particiones": [
+        {
+          "clave": "soporte",
+          "estado": "success",
+          "tomados": 5
+        },
+        {
+          "clave": "analista",
+          "estado": "success",
+          "tomados": 5
+        },
+        {
+          "clave": "reportes",
+          "estado": "success",
+          "tomados": 4
+        },
+        {
+          "clave": "datos",
+          "estado": "success",
+          "tomados": 4
+        }
+      ]
+    },
+    {
+      "source_id": "F04",
+      "nombre": "Remote OK",
+      "metodo": "api-json",
+      "endpoint": "https://remoteok.com/api",
+      "parser_version": "remoteok-1.0.0",
+      "estado": "success",
+      "http_status": 200,
+      "aceptada": true,
+      "observaciones": 20,
+      "relevantes": 2,
+      "elegibles": 0,
+      "incompatibles": 18,
+      "porcentaje_relevante": 10.0,
+      "con_empresa": 20,
+      "con_region": 9,
+      "con_salario": 11,
+      "categorias": {
+        "Business Analyst": 1,
+        "VA/Data Entry": 1
+      },
+      "muestra": [
+        {
+          "titulo": "Sales Operations Analyst",
+          "empresa": "Calabrio",
+          "region": null,
+          "categoria": "Business Analyst",
+          "elegibilidad": "doubtful",
+          "score": 71.4,
+          "url": "https://remoteok.com/remote-jobs/remote-sales-operations-analyst-calabrio-1137674"
+        },
+        {
+          "titulo": "Software Engineer Infrastructure",
+          "empresa": "Sodalis, Inc.",
+          "region": "Palo Alto",
+          "categoria": "VA/Data Entry",
+          "elegibilidad": "doubtful",
+          "score": 75.0,
+          "url": "https://remoteok.com/remote-jobs/remote-software-engineer-infrastructure-sodalis-inc-1137614"
+        }
+      ],
+      "error": null,
+      "duracion_ms": 1502.4,
+      "particiones": null
+    },
+    {
+      "source_id": "F05",
+      "nombre": "The Muse",
+      "metodo": "api-json",
+      "endpoint": "https://www.themuse.com/api/public/jobs",
+      "parser_version": "themuse-1.0.0",
+      "estado": "success",
+      "http_status": null,
+      "aceptada": true,
+      "observaciones": 12,
+      "relevantes": 1,
+      "elegibles": 0,
+      "incompatibles": 11,
+      "porcentaje_relevante": 8.3,
+      "con_empresa": 12,
+      "con_region": 12,
+      "con_salario": 0,
+      "categorias": {
+        "Data Scientist": 1
+      },
+      "muestra": [
+        {
+          "titulo": "Machine Learning Engineer - CV/NLP/Multimodal LLM (TikTok Trust and Safety) - 2025 Start(Master/Bachelor)",
+          "empresa": "TikTok",
+          "region": "San Jose, CA",
+          "categoria": "Data Scientist",
+          "elegibilidad": "doubtful",
+          "score": 83.3,
+          "url": "https://www.themuse.com/jobs/tiktok/machine-learning-engineer-cvnlpmultimodal-llm-tiktok-trust-and-safety-2025-startmasterbachelor"
+        }
+      ],
+      "error": null,
+      "duracion_ms": 2890.2,
+      "particiones": [
+        {
+          "clave": "datos-remoto",
+          "estado": "success",
+          "tomados": 6
+        },
+        {
+          "clave": "datos-inicial",
+          "estado": "success",
+          "tomados": 6
+        },
+        {
+          "clave": "soporte-remoto",
+          "estado": "empty_valid",
+          "tomados": 0
+        }
+      ]
+    },
+    {
+      "source_id": "F06",
+      "nombre": "Working Nomads",
+      "metodo": "api-json",
+      "endpoint": "https://www.workingnomads.com/api/exposed_jobs/",
+      "parser_version": "workingnomads-1.0.0",
+      "estado": "success",
+      "http_status": 200,
+      "aceptada": true,
+      "observaciones": 20,
+      "relevantes": 0,
+      "elegibles": 0,
+      "incompatibles": 20,
+      "porcentaje_relevante": 0.0,
+      "con_empresa": 20,
+      "con_region": 20,
+      "con_salario": 0,
+      "categorias": {},
+      "muestra": [],
+      "error": null,
+      "duracion_ms": 1148.3,
+      "particiones": null
+    },
+    {
+      "source_id": "F07",
+      "nombre": "NoDesk",
+      "metodo": "rss",
+      "endpoint": "https://nodesk.co/remote-jobs/index.xml",
+      "parser_version": "nodesk-1.0.0",
+      "estado": "success",
+      "http_status": 200,
+      "aceptada": true,
+      "observaciones": 10,
+      "relevantes": 0,
+      "elegibles": 0,
+      "incompatibles": 10,
+      "porcentaje_relevante": 0.0,
+      "con_empresa": 10,
+      "con_region": 0,
+      "con_salario": 0,
+      "categorias": {},
+      "muestra": [],
+      "error": null,
+      "duracion_ms": 471.2,
+      "particiones": null
+    },
+    {
+      "source_id": "F08",
+      "nombre": "Jobspresso",
+      "metodo": "rss",
+      "endpoint": "https://jobspresso.co/feed/?post_type=job_listing",
+      "parser_version": "jobspresso-1.0.0",
+      "estado": "success",
+      "http_status": 200,
+      "aceptada": true,
+      "observaciones": 20,
+      "relevantes": 0,
+      "elegibles": 0,
+      "incompatibles": 20,
+      "porcentaje_relevante": 0.0,
+      "con_empresa": 20,
+      "con_region": 20,
+      "con_salario": 0,
+      "categorias": {},
+      "muestra": [],
+      "error": null,
+      "duracion_ms": 464.8,
+      "particiones": null
+    },
+    {
+      "source_id": "F09",
+      "nombre": "Python.org Jobs",
+      "metodo": "rss",
+      "endpoint": "https://www.python.org/jobs/feed/rss/",
+      "parser_version": "pythonorg-1.0.0",
+      "estado": "success",
+      "http_status": 200,
+      "aceptada": true,
+      "observaciones": 20,
+      "relevantes": 0,
+      "elegibles": 0,
+      "incompatibles": 20,
+      "porcentaje_relevante": 0.0,
+      "con_empresa": 20,
+      "con_region": 19,
+      "con_salario": 0,
+      "categorias": {},
+      "muestra": [],
+      "error": null,
+      "duracion_ms": 160.2,
+      "particiones": null
+    },
+    {
+      "source_id": "F10",
+      "nombre": "Arbeitnow",
+      "metodo": "api-json",
+      "endpoint": "https://www.arbeitnow.com/api/job-board-api",
+      "parser_version": "arbeitnow-1.0.0",
+      "estado": "success",
+      "http_status": 200,
+      "aceptada": true,
+      "observaciones": 20,
+      "relevantes": 0,
+      "elegibles": 0,
+      "incompatibles": 20,
+      "porcentaje_relevante": 0.0,
+      "con_empresa": 20,
+      "con_region": 20,
+      "con_salario": 0,
+      "categorias": {},
+      "muestra": [],
+      "error": null,
+      "duracion_ms": 433.0,
+      "particiones": null
+    },
+    {
+      "source_id": "F11",
+      "nombre": "Remotive",
+      "metodo": "api-json",
+      "endpoint": "https://remotive.com/api/remote-jobs",
+      "parser_version": "remotive-1.0.0",
+      "estado": "success",
+      "http_status": 200,
+      "aceptada": true,
+      "observaciones": 12,
+      "relevantes": 1,
+      "elegibles": 1,
+      "incompatibles": 11,
+      "porcentaje_relevante": 8.3,
+      "con_empresa": 12,
+      "con_region": 12,
+      "con_salario": 9,
+      "categorias": {
+        "VA/Data Entry": 1
+      },
+      "muestra": [
+        {
+          "titulo": "Remote Office Assistant",
+          "empresa": "Coalition Technologies",
+          "region": "Worldwide",
+          "categoria": "VA/Data Entry",
+          "elegibilidad": "eligible",
+          "score": 90.0,
+          "url": "https://remotive.com/remote-jobs/marketing/remote-office-assistant-1680495"
+        }
+      ],
+      "error": null,
+      "duracion_ms": 387.4,
+      "particiones": null
+    }
+  ],
+  "resumen": {
+    "total": 11,
+    "aceptadas": 11,
+    "con_relevantes": 4,
+    "observaciones": 188,
+    "relevantes": 6
+  }
+}

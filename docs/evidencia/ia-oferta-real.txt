@@ -1,0 +1,111 @@
+==============================================================================
+Prueba de IA · una sola oferta · cuota gratuita
+==============================================================================
+Oferta   : Consumer Support Specialist (Weekend Shift, Sunday - Thursda
+Empresa  : Keeper Security
+Región   : Anywhere in the World
+id       : job_58104e44cfaa6d7e408e
+Modelo   : gemini:gemini-3.5-flash-lite
+------------------------------------------------------------------------------
+Precondiciones de costo cero:
+  requiere_pago ............. False
+  dentro_cuota_gratuita ..... True
+  precio por 1M tokens ...... entrada 0.0 / salida 0.0
+  presupuesto / gastado ..... USD 0.0 / USD 0.0
+  credencial ................ credenciales-windows · huella 475ffac78c3a · 53 car.
+  cuota ..................... con cuota
+  resultado ................. APTA (no puede generar gasto)
+------------------------------------------------------------------------------
+Resultado del análisis:
+  proveedor / modelo ....... cache / cache
+  complejidad .............. equilibrado
+  caché .................... True
+  confianza ................ 0.95
+  evidencias válidas ....... 4
+  evidencias no verificadas  0
+  costo .................... USD 0.0
+
+Registro de la llamada (ai_calls):
+  estado ................... ok
+  tokens entrada / salida .. 1969 / 480
+  cuota consumida .......... 1
+  huella de la credencial .. 475ffac78c3a
+  duración ................. 4926 ms
+
+Segunda opinión guardada (ai_analyses):
+  categoría ................ Customer Support
+  seniority ................ junior
+  modalidad ................ remote
+  elegibilidad territorial . restringida
+  años de experiencia ...... 1
+  habilidades obligatorias . Microsoft Office Suite, GSuite, Smartphones, Tablets and Computers (Mac, Android and Windows, Strong typing skills (40+ wpm)
+  explicación .............. El puesto es de soporte al consumidor pero exige residir en zonas horarias de Estados Unidos, por lo que no aplica para alguien en Argentina.
+  incertidumbres ........... El aviso restringe la ubicación a zonas horarias de US, lo que excluye a Argentina.
+
+Consumo acumulado tras la prueba:
+  generaciones correctas ... 1
+  intentos fallidos ........ 1
+  tokens entrada / salida .. 1969 / 480
+  cuota consumida .......... 1
+  gasto .................... USD 0.0
+  presupuesto del mes ...... USD 0.0 (gastado USD 0.0)
+
+JSON:
+{
+  "oferta": "job_58104e44cfaa6d7e408e",
+  "resultado": {
+    "job_id": "job_58104e44cfaa6d7e408e",
+    "proveedor": "cache",
+    "modelo": "cache",
+    "complejidad": "equilibrado",
+    "cache": true,
+    "confianza": 0.95,
+    "evidencias_validas": 4,
+    "evidencias_invalidas": 0,
+    "costo_usd": 0.0
+  },
+  "llamada": {
+    "proveedor": "gemini",
+    "modelo": "gemini-3.5-flash-lite",
+    "proposito": "analisis",
+    "estado": "ok",
+    "tokens_entrada": 1969,
+    "tokens_salida": 480,
+    "costo_usd": 0.0,
+    "cuota_consumida": 1,
+    "huella_credencial": "475ffac78c3a",
+    "duracion_ms": 4926,
+    "error": "",
+    "creado_en": "2026-11-07T01:31:10Z"
+  },
+  "consumo": {
+    "solicitudes_exitosas": 1,
+    "intentos_fallidos": 1,
+    "tokens_entrada": 1969,
+    "tokens_salida": 480,
+    "cuota_consumida": 1,
+    "costo_usd": 0.0
+  }
+}
+
+------------------------------------------------------------------------------
+Nota sobre esta evidencia
+------------------------------------------------------------------------------
+La generación real con la API ocurrió en la corrida inmediatamente anterior a la
+que produce este archivo. Queda registrada en `ai_calls` (id 2):
+
+  proveedor/modelo ..... gemini / gemini-3.5-flash-lite
+  estado ............... ok
+  tokens entrada/salida  1969 / 480
+  cuota consumida ...... 1
+  duración ............. 4926 ms
+  costo ................ USD 0.0
+  huella credencial .... 475ffac78c3a
+
+El archivo muestra la segunda corrida sobre la misma oferta: el contenido no
+cambió, así que la caché respondió sin emitir otra petición (`cache / cache`,
+costo USD 0). Sirve como prueba de que la caché evita gasto repetido y de que el
+circuito completo (credencial → cuota → validación → evidencia → registro)
+funciona sobre una oferta real.
+
+Total consumido: 1 generación, 1969 + 480 tokens, 0 de gasto.

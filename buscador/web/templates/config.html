@@ -1,0 +1,516 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Configuración</h1>
+<p class="sub">Perfil, búsqueda automática, respaldos e IA. Nada de esto se guarda en el repositorio.</p>
+
+{% if guardado == 'perfil' %}
+<div class="aviso bien">Perfil guardado y ofertas reencoladas para volver a clasificar. El recálculo corre en la próxima búsqueda.</div>
+{% elif guardado == 'programacion' %}
+<div class="aviso bien">Programación actualizada.</div>
+{% elif guardado == 'respaldo' %}
+<div class="aviso bien">Respaldo creado y verificado.</div>
+{% elif guardado == 'exportacion' %}
+<div class="aviso bien">Exportación escrita en la carpeta de exportaciones.</div>
+{% elif guardado == 'ia' %}
+<div class="aviso bien">Preferencias de IA guardadas.</div>
+{% endif %}
+
+<div class="card">
+  <h2>Perfil activo</h2>
+  {% if perfil %}
+  <p class="meta" style="margin-bottom:.7rem">
+    <span>versión {{ perfil.version }}</span><span>origen {{ perfil.origen }}</span>
+    <span>creado {{ perfil.creado_en[:16] }}</span>
+  </p>
+  {% if perfil.origen == 'sintetico_demostracion' %}
+  <p class="aviso alerta">Este perfil es de demostración. Cargá tus datos reales: mientras no lo hagas, ningún puntaje
+    sirve para decidir.</p>
+  {% endif %}
+  {% endif %}
+
+  <form method="post" action="/perfil">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="grilla">
+      <div>
+        <label for="habilidades">Habilidades (una por línea)</label>
+        <textarea id="habilidades" name="habilidades" style="min-height:190px">{% for h in datos_perfil.habilidades %}{{ h.nombre }}
+{% endfor %}</textarea>
+        <p class="chico">Escribí sólo lo que podés demostrar con un trabajo, un repositorio o un certificado.</p>
+      </div>
+      <div>
+        <label for="ingles">Inglés</label>
+        <select id="ingles" name="ingles">
+          {% for nivel in ['A1','A2','B1','B2','C1','C2'] %}
+          <option value="{{ nivel }}" {% if datos_perfil.idioma and datos_perfil.idioma.ingles == nivel %}selected{% endif %}>{{ nivel }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="anios" style="margin-top:.6rem">Años de experiencia</label>
+        <input id="anios" type="number" name="anios" min="0" max="40"
+               value="{{ datos_perfil.experiencia.anios if datos_perfil.experiencia else 0 }}">
+
+        <label for="nivel" style="margin-top:.6rem">Nivel</label>
+        <select id="nivel" name="nivel">
+          {% for n in ['junior','trainee','semi senior'] %}
+          <option value="{{ n }}" {% if datos_perfil.experiencia and datos_perfil.experiencia.nivel == n %}selected{% endif %}>{{ n }}</option>
+          {% endfor %}
+        </select>
+
+        <label for="residencia" style="margin-top:.6rem">Residencia</label>
+        <input id="residencia" type="text" name="residencia"
+               value="{{ datos_perfil.territorio.residencia if datos_perfil.territorio else 'Argentina' }}">
+
+        <label style="margin-top:.6rem">
+          <input type="checkbox" name="remoto" value="1"
+                 {% if not datos_perfil.territorio or datos_perfil.territorio.remoto %}checked{% endif %}>
+          Busco remoto
+        </label>
+
+        <label for="presencial" style="margin-top:.6rem">Presencial aceptado (separado por comas)</label>
+        <input id="presencial" type="text" name="presencial"
+               value="{{ (datos_perfil.territorio.presencial or [])|join(', ') if datos_perfil.territorio else 'La Plata' }}">
+      </div>
+      <div>
+        <label for="ars_referencia">Salario ARS de referencia</label>
+        <input id="ars_referencia" type="number" name="ars_referencia" step="1000"
+               value="{{ datos_perfil.salario.ars_neto_referencia or '' if datos_perfil.salario else '' }}">
+
+        <label for="ars_objetivo" style="margin-top:.6rem">Salario ARS objetivo</label>
+        <input id="ars_objetivo" type="number" name="ars_objetivo" step="1000"
+               value="{{ datos_perfil.salario.ars_neto_objetivo or '' if datos_perfil.salario else '' }}">
+
+        <label for="usd_hora" style="margin-top:.6rem">USD por hora (freelance)</label>
+        <input id="usd_hora" type="number" name="usd_hora" step="1"
+               value="{{ datos_perfil.salario.usd_hora_freelance or '' if datos_perfil.salario else '' }}">
+
+        <label for="desde" style="margin-top:.6rem">Disponibilidad desde</label>
+        <input id="desde" type="text" name="desde"
+               value="{{ datos_perfil.disponibilidad.desde if datos_perfil.disponibilidad else 'inmediata' }}">
+
+        <label for="horas" style="margin-top:.6rem">Horas por semana</label>
+        <input id="horas" type="number" name="horas"
+               value="{{ datos_perfil.disponibilidad.horas_semana if datos_perfil.disponibilidad else 40 }}">
+      </div>
+    </div>
+
+    <h3>Categorías que quiero ver</h3>
+    <div class="grilla">
+      {% for c in categorias %}
+      <label>
+        <input type="checkbox" name="categorias" value="{{ c }}"
+               {% if not datos_perfil.categorias or c in datos_perfil.categorias %}checked{% endif %}>
+        {{ c }}
+      </label>
+      {% endfor %}
+    </div>
+
+    <div class="acciones" style="margin-top:1rem">
+      <button class="primario" type="submit">Guardar perfil y reclasificar</button>
+    </div>
+    <p class="chico">Guardar crea una versión nueva del perfil y encola la reclasificación de todas las ofertas.
+      No borra tu historial de decisiones.</p>
+  </form>
+
+  <details style="margin-top:1rem">
+    <summary class="chico">Ver el JSON completo del perfil activo</summary>
+    <pre>{{ perfil_json }}</pre>
+  </details>
+  {% if versiones %}
+  <p class="meta">Versiones: {% for v in versiones %}{{ v.version }} ({{ v.origen }}){% if not loop.last %} · {% endif %}{% endfor %}</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Búsqueda automática cada {{ programacion.intervalo_horas }} horas</h2>
+  <p class="meta">
+    <span>última automática: {{ programacion.ultima_automatica or 'nunca' }}</span>
+    <span>próxima: {{ programacion.proxima }}</span>
+    <span>{% if programacion.vencida %}corresponde ahora{% else %}en espera{% endif %}</span>
+    <span>tarea de Windows: {{ 'registrada' if programacion.tarea_windows.registrada else 'no registrada' }}</span>
+  </p>
+  <p class="sub" style="margin-top:.5rem">
+    Hay dos caminos. El <strong>interno</strong> corre mientras la aplicación está abierta. La
+    <strong>tarea de Windows</strong> corre sin abrir la interfaz y es la forma de cumplir la periodicidad con la
+    computadora encendida.
+  </p>
+  <div class="acciones">
+    <form method="post" action="/programar">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="accion" value="activar">
+      <button type="submit" {% if ajustes.corrida_automatica == '1' %}disabled{% endif %}>Activar interno</button>
+    </form>
+    <form method="post" action="/programar">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="accion" value="desactivar">
+      <button type="submit" {% if ajustes.corrida_automatica != '1' %}disabled{% endif %}>Desactivar interno</button>
+    </form>
+    <form method="post" action="/programar">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="accion" value="windows">
+      <button type="submit">Registrar tarea de Windows (cada {{ programacion.intervalo_horas }} h)</button>
+    </form>
+    <form method="post" action="/programar">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="accion" value="windows-quitar">
+      <button type="submit">Quitar tarea de Windows</button>
+    </form>
+  </div>
+  <p class="chico">Registrar la tarea modifica el Programador de tareas de tu usuario y se puede quitar con el botón
+    de al lado. El disparo ejecuta <code>buscar-automatico.cmd</code>.</p>
+</div>
+
+<div class="card">
+  <h2>Respaldos y exportación</h2>
+  <div class="acciones" style="margin-bottom:.8rem">
+    <form method="post" action="/respaldo">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="primario" type="submit">Crear respaldo ahora</button>
+    </form>
+    <form method="post" action="/exportar">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="guardadas" value="0">
+      <button type="submit">Exportar todo a CSV</button>
+    </form>
+    <form method="post" action="/exportar">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="guardadas" value="1">
+      <button type="submit">Exportar guardadas</button>
+    </form>
+  </div>
+  {% if respaldos %}
+  <table>
+    <thead><tr><th>Archivo</th><th>Tamaño</th><th>Modificado</th></tr></thead>
+    <tbody>
+    {% for r in respaldos %}
+      <tr><td>{{ r.archivo }}</td><td>{{ (r.bytes / 1024)|round(0)|int }} KB</td><td>{{ r.modificado[:19] }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="chico">Se conservan los 14 respaldos más recientes. Restaurar desde la consola:
+    <code>python -m buscador restaurar nombre.db</code>. Antes de restaurar se respalda el estado actual.</p>
+  {% else %}
+  <p class="chico">Sin respaldos todavía.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>Inteligencia artificial (opcional, costo USD 0 por defecto)</h2>
+  <p class="sub">
+    La aplicación funciona completa sin IA. Si la habilitás, sólo se usan modelos con
+    cuota gratuita; los proveedores de pago quedan bloqueados salvo autorización expresa.
+    El rastreador y las reglas deterministas siguen mandando: la IA aporta una segunda
+    opinión con evidencia citada y nunca anula una restricción obligatoria.
+  </p>
+  <p class="meta">
+    <span>estado: {{ 'habilitada' if ia.politica.habilitada else 'desactivada' }}</span>
+    <span>listo: {{ 'sí' if ia.listo else 'no' }} ({{ ia.motivo }})</span>
+    <span>presupuesto: USD {{ ia.presupuesto.limite_usd }} · gastado USD {{ ia.presupuesto.gastado_usd }}</span>
+    <span>llamadas hoy: {{ ia.cuotas.total_peticiones }} · tokens: {{ ia.cuotas.total_tokens }}</span>
+    <span>caché: {{ ia.cache.entradas }} entradas · {{ ia.cache.reutilizaciones }} reutilizaciones</span>
+  </p>
+  <p class="meta">
+    <span>hoy: {{ ia.consumo.hoy.solicitudes_exitosas }} generación(es) correcta(s) ·
+          {{ ia.consumo.hoy.intentos_fallidos }} intento(s) fallido(s)</span>
+    <span>tokens hoy: {{ ia.consumo.hoy.tokens_entrada }} entrada / {{ ia.consumo.hoy.tokens_salida }} salida</span>
+    <span>cuota consumida hoy: {{ ia.consumo.hoy.cuota_consumida }}</span>
+    <span>gasto hoy: USD {{ ia.consumo.hoy.costo_usd }}</span>
+    {% if ia.credencial_activa %}<span>credencial activa: {{ ia.credencial_activa }}</span>{% endif %}
+  </p>
+  {% if aviso_ia %}<p class="aviso alerta">Último aviso: {{ aviso_ia }}</p>{% endif %}
+
+  <h3>Modelos de la cascada</h3>
+  <table>
+    <thead><tr><th>#</th><th>Modelo</th><th>Nivel</th><th>Costo</th><th>Credencial</th><th>Cuota</th><th>Prueba</th></tr></thead>
+    <tbody>
+    {% for c in ia.candidatos %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><code>{{ c.referencia }}</code><div class="chico">{{ c.nombre }}</div></td>
+        <td>{{ c.nivel }}</td>
+        <td>{% if c.requiere_pago %}<span class="badge incompatible">pago</span>
+            {% elif c.gratuito %}<span class="badge eligible">gratuito</span>
+            {% else %}<span class="badge">—</span>{% endif %}</td>
+        <td>{{ c.credencial }}</td>
+        <td>{{ c.estado }}{% if c.motivo %}<div class="chico">{{ c.motivo }}</div>{% endif %}</td>
+        <td>
+          <form method="post" action="/ia">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <input type="hidden" name="accion" value="probar">
+            <input type="hidden" name="referencia" value="{{ c.referencia }}">
+            <button type="submit" title="Hace una llamada real y consume cuota">Probar</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="chico">«Probar» hace una llamada real: consume una petición de la cuota del
+    proveedor. En cambio, «Verificar modelos» consulta el catálogo y no consume cuota de generación.</p>
+
+  <h3>Credenciales</h3>
+  <table>
+    <thead><tr><th>Proveedor</th><th>Estado</th><th>Origen</th><th>Clave</th><th>Registrar</th><th>Modelos</th></tr></thead>
+    <tbody>
+    {% for clave, prov in credenciales_ia.items() %}
+      <tr>
+        <td>{{ clave }}</td>
+        <td>
+          {% if prov.estado == 'verificada' %}<span class="badge eligible">verificada</span>
+          {% elif prov.estado == 'invalida' %}<span class="badge incompatible">inválida</span>
+          {% elif prov.estado == 'presente' %}<span class="badge doubtful">presente</span>
+          {% else %}<span class="badge">ausente</span>{% endif %}
+        </td>
+        <td class="chico">{{ prov.origen or '—' }}<div><code>{{ prov.variable }}</code></div></td>
+        <td class="chico">{{ prov.mascara or 'sin registrar' }}</td>
+        <td>
+          <form method="post" action="/ia" class="barra" style="margin:0">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <input type="hidden" name="accion" value="clave">
+            <input type="hidden" name="proveedor" value="{{ clave }}">
+            <input type="password" name="clave" placeholder="nueva clave" autocomplete="off" size="16">
+            <button type="submit">Guardar</button>
+          </form>
+          <form method="post" action="/ia" style="margin-top:.3rem">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <input type="hidden" name="accion" value="borrar-clave">
+            <input type="hidden" name="proveedor" value="{{ clave }}">
+            <button type="submit" class="peligro">Borrar</button>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="/ia">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <input type="hidden" name="accion" value="verificar">
+            <input type="hidden" name="proveedor" value="{{ clave }}">
+            <button type="submit">Verificar</button>
+          </form>
+          <form method="post" action="/ia" style="margin-top:.3rem">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <input type="hidden" name="accion" value="diagnosticar">
+            <input type="hidden" name="proveedor" value="{{ clave }}">
+            <button type="submit">Diagnosticar</button>
+          </form>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="chico">Las claves se guardan en el Administrador de credenciales de Windows (o cifradas
+    con DPAPI si no está disponible). No se escriben en la base, ni en los registros, ni en los
+    respaldos, ni en las exportaciones. Nunca se muestran completas.</p>
+
+  {% if ultimo_diagnostico %}
+  <div class="aviso {{ 'bien' if ultimo_diagnostico.ok else 'alerta' }}" data-diagnostico="1">
+    <strong>Diagnóstico de la credencial:</strong>
+    {% if ultimo_diagnostico.estado %}<span class="badge {{ 'eligible' if ultimo_diagnostico.ok else 'doubtful' }}">{{ ultimo_diagnostico.estado }}</span>{% endif %}
+    {{ ultimo_diagnostico.conclusion }}
+    {% if ultimo_diagnostico.clave %}
+    <div class="chico" style="margin-top:.3rem">
+      origen {{ ultimo_diagnostico.clave.origen or '—' }} ·
+      {{ ultimo_diagnostico.clave.longitud }} caracteres ·
+      huella {{ ultimo_diagnostico.clave.huella or '—' }} ·
+      máscara {{ ultimo_diagnostico.clave.mascara }}
+      {% if ultimo_diagnostico.clave.formato_conocido is defined %}
+        · formato conocido: {{ 'sí' if ultimo_diagnostico.clave.formato_conocido else 'no' }}
+        {% if ultimo_diagnostico.clave.nota_formato %}<em>({{ ultimo_diagnostico.clave.nota_formato }})</em>{% endif %}
+      {% endif %}
+      · {{ ultimo_diagnostico.fecha[:19] if ultimo_diagnostico.fecha }}
+    </div>
+    {% endif %}
+    {% if ultimo_diagnostico.sombra %}<div class="chico">Aviso: {{ ultimo_diagnostico.sombra }}</div>{% endif %}
+
+    {% if ultimo_diagnostico.modelos and ultimo_diagnostico.modelos.configurados %}
+    <div class="chico" style="margin-top:.3rem">
+      Modelos configurados:
+      {% for m in ultimo_diagnostico.modelos.presentes %}<span class="badge eligible">{{ m }}</span> {% endfor %}
+      {% for m in ultimo_diagnostico.modelos.ausentes %}<span class="badge incompatible">{{ m }} (no disponible)</span> {% endfor %}
+      {% if ultimo_diagnostico.modelos.total %}· {{ ultimo_diagnostico.modelos.total }} modelos en el catálogo{% endif %}
+    </div>
+    {% endif %}
+
+    {% if ultimo_diagnostico.endpoints %}
+    <table style="margin-top:.4rem">
+      <thead><tr><th>Prueba</th><th>Tipo</th><th>HTTP</th><th>Resultado</th></tr></thead>
+      <tbody>
+      {% for e in ultimo_diagnostico.endpoints %}
+        <tr>
+          <td class="chico">{{ e.nombre }}</td>
+          <td class="chico">{{ e.tipo or '—' }}</td>
+          <td>{{ e.http or '—' }}</td>
+          <td class="chico">
+            {% if e.aplicable is defined and not e.aplicable %}no aplica
+            {% elif e.ok %}correcto
+            {% else %}{{ (e.razones|join(', ')) if e.razones else (e.mensaje or 'error') }}{% endif %}
+            {% if e.nota %}<div><em>{{ e.nota }}</em></div>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="chico">Sólo las pruebas de tipo <code>catalogo</code> y <code>generacion</code>
+      deciden el estado. Los controles de YouTube y Books no dicen nada sobre Gemini: Google
+      ya no acepta claves de API en esos servicios.</p>
+    {% endif %}
+  </div>
+
+  {% if ultimo_diagnostico.historial %}
+  <div class="card" style="margin-top:.6rem">
+    <h3 style="margin-top:0">Último resultado válido e historial</h3>
+    {% if ultimo_diagnostico.historial.ultimo_valido %}
+    <p class="chico">
+      Último resultado válido: {{ ultimo_diagnostico.historial.ultimo_valido.creado_en[:19] }} ·
+      huella {{ ultimo_diagnostico.historial.ultimo_valido.huella_credencial or 'sin registrar' }}
+    </p>
+    {% else %}
+    <p class="chico">Todavía no hay ningún resultado válido registrado.</p>
+    {% endif %}
+    {% if ultimo_diagnostico.historial.por_estado %}
+    <table>
+      <thead><tr><th>Estado</th><th>Huella</th><th>Veces</th><th>Última vez</th><th></th></tr></thead>
+      <tbody>
+      {% for h in ultimo_diagnostico.historial.por_estado %}
+        <tr>
+          <td>{{ h.estado }}</td>
+          <td class="chico">{{ h.huella or 'sin registrar' }}</td>
+          <td>{{ h.veces }}</td>
+          <td class="chico">{{ h.ultima[:19] }}</td>
+          <td>{% if h.es_actual %}<span class="badge eligible">credencial actual</span>
+              {% else %}<span class="badge">otra credencial</span>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% if ultimo_diagnostico.historial.errores_de_otra_clave %}
+    <p class="chico">Hay {{ ultimo_diagnostico.historial.errores_de_otra_clave }} error(es) registrados
+      con otra credencial: no describen el estado actual.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endif %}
+
+  {% if ultima_verificacion %}
+  <p class="aviso">
+    Última verificación ({{ ultima_verificacion.proveedor }}): {{ ultima_verificacion.estado }}.
+    Presentes: {{ ultima_verificacion.presentes|join(', ') or 'ninguno' }}.
+    Ausentes: {{ ultima_verificacion.ausentes|join(', ') or 'ninguno' }}.
+    {% if ultima_verificacion.detalle %}<br><span class="chico">{{ ultima_verificacion.detalle }}</span>{% endif %}
+  </p>
+  {% endif %}
+  {% if ultima_prueba %}
+  <p class="aviso {{ 'bien' if ultima_prueba.ok else 'alerta' }}">
+    Última prueba ({{ ultima_prueba.referencia }}): {{ ultima_prueba.estado }} ·
+    consumió cuota: {{ 'sí' if ultima_prueba.consumio_cuota else 'no' }}.
+    {% if ultima_prueba.detalle %}<br><span class="chico">{{ ultima_prueba.detalle }}</span>{% endif %}
+  </p>
+  {% endif %}
+
+  <h3>Configuración</h3>
+  <form method="post" action="/ia">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="accion" value="guardar">
+    <div class="grilla">
+      <div>
+        <label for="cascada">Orden de la cascada (una referencia por línea)</label>
+        <textarea id="cascada" name="cascada" style="min-height:150px">{{ cascada_texto }}</textarea>
+        <p class="chico">Formato <code>proveedor:modelo</code>. El orden define el respaldo:
+          si un modelo falla o se queda sin cuota, se pasa al siguiente.</p>
+        <label style="margin-top:.6rem">
+          <input type="checkbox" name="proveedores" value="gemini"
+                 {% if 'gemini' in ia.politica.proveedores_habilitados %}checked{% endif %}> Gemini
+        </label>
+        <label><input type="checkbox" name="proveedores" value="groq"
+                 {% if 'groq' in ia.politica.proveedores_habilitados %}checked{% endif %}> Groq</label>
+        <label><input type="checkbox" name="proveedores" value="cloudflare"
+                 {% if 'cloudflare' in ia.politica.proveedores_habilitados %}checked{% endif %}> Cloudflare</label>
+        <label><input type="checkbox" name="proveedores" value="deepseek"
+                 {% if 'deepseek' in ia.politica.proveedores_habilitados %}checked{% endif %}> DeepSeek (pago)</label>
+      </div>
+      <div>
+        <label for="presupuesto">Presupuesto mensual USD</label>
+        <input id="presupuesto" type="number" name="presupuesto" step="0.01" min="0"
+               value="{{ ia.politica.presupuesto_mensual_usd }}">
+        <label for="limite_llamadas" style="margin-top:.6rem">Llamadas máximas por corrida</label>
+        <input id="limite_llamadas" type="number" name="limite_llamadas" min="0"
+               value="{{ ia.politica.llamadas_por_corrida }}">
+        <label for="cuenta_cloudflare" style="margin-top:.6rem">Cuenta de Cloudflare (ID)</label>
+        <input id="cuenta_cloudflare" type="text" name="cuenta_cloudflare"
+               value="{{ ajustes.ia_cuenta_cloudflare or '' }}" placeholder="32 caracteres hex">
+        <label style="margin-top:.6rem">
+          <input type="checkbox" name="datos" value="1"
+                 {% if ia.politica.datos_de_ofertas %}checked{% endif %}>
+          Permitir enviar el texto de las ofertas al proveedor
+        </label>
+        <label>
+          <input type="checkbox" name="cache" value="1"
+                 {% if ia.politica.cache %}checked{% endif %}>
+          Usar caché por contenido, modelo y versión
+        </label>
+        <label>
+          <input type="checkbox" name="autorizo_pago" value="1"
+                 {% if ia.politica.autorizo_pago %}checked{% endif %}>
+          Autorizo gasto en proveedores de pago (DeepSeek)
+        </label>
+      </div>
+    </div>
+    <div class="acciones" style="margin-top:1rem">
+      <button class="primario" type="submit">Guardar configuración</button>
+    </div>
+  </form>
+  <div class="acciones">
+    <form method="post" action="/ia">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="accion" value="habilitar">
+      <button type="submit">Habilitar IA</button>
+    </form>
+    <form method="post" action="/ia">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="accion" value="deshabilitar">
+      <button type="submit">Deshabilitar IA</button>
+    </form>
+  </div>
+
+  {% if ia.ultimas %}
+  <h3>Últimas llamadas</h3>
+  <table>
+    <thead><tr><th>Cuándo</th><th>Proveedor</th><th>Modelo</th><th>Propósito</th>
+               <th>Tokens</th><th>Costo</th><th>Duración</th><th>Cuota</th><th>Estado</th></tr></thead>
+    <tbody>
+    {% for l in ia.ultimas %}
+      <tr>
+        <td>{{ l.creado_en[:16] }}</td><td>{{ l.proveedor }}</td><td class="chico">{{ l.modelo }}</td>
+        <td>{{ l.proposito }}</td><td>{{ l.tokens_entrada }}/{{ l.tokens_salida }}</td>
+        <td>USD {{ l.costo_usd }}</td><td>{{ l.duracion_ms or '—' }} ms</td>
+        <td>{{ 'sí' if l.cuota_consumida else 'no' }}</td><td>{{ l.estado }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+  <h2>Sistema</h2>
+  <table>
+    <tbody>
+      <tr><th>Datos</th><td><code>{{ rutas.data }}</code></td></tr>
+      <tr><th>Base</th><td><code>{{ rutas.db }}</code></td></tr>
+      <tr><th>Perfil</th><td><code>{{ rutas.perfil }}</code></td></tr>
+      <tr><th>Registros</th><td><code>{{ rutas.logs }}</code></td></tr>
+      <tr><th>Respaldos</th><td><code>{{ rutas.backups }}</code></td></tr>
+      <tr><th>Exportaciones</th><td><code>{{ rutas.exports }}</code></td></tr>
+      <tr><th>journal_mode / synchronous</th><td>{{ pragmas.journal_mode }} / {{ pragmas.synchronous }} (2 = FULL)</td></tr>
+      <tr><th>foreign_keys / busy_timeout</th><td>{{ pragmas.foreign_keys }} / {{ pragmas.busy_timeout }} ms</td></tr>
+      <tr><th>Esquema / reglas</th><td>{{ pragmas.user_version }} / {{ rules_version }}</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Cerrar</h2>
+  <p class="sub">Cerrar la pestaña no detiene el servidor. Usá este botón para cerrarlo de forma ordenada.</p>
+  <form method="post" action="/salir">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit">Salir de la aplicación</button>
+  </form>
+</div>
+{% endblock %}

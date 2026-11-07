@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>We Work Remotely: Remote jobs</title>
+    <lastBuildDate>Fri, 06 Nov 2026 10:00:00 +0000</lastBuildDate>
+    <item>
+      <title>Acme Data: Junior Data Analyst</title>
+      <region>Anywhere in the World</region>
+      <skills>SQL, Excel, Power BI</skills>
+      <category>Data Analysis</category>
+      <type>Full-Time</type>
+      <description><![CDATA[<p>We need a <strong>Junior Data Analyst</strong>. SQL required, Python desirable. Excel and Power BI are a plus.</p><p>Remote worldwide.</p>]]></description>
+      <pubDate>Thu, 05 Nov 2026 12:00:00 +0000</pubDate>
+      <expires_at>Fri, 05 Dec 2026 12:00:00 +0000</expires_at>
+      <guid>https://weworkremotely.com/remote-jobs/acme-data-junior-data-analyst</guid>
+      <link>https://weworkremotely.com/remote-jobs/acme-data-junior-data-analyst</link>
+    </item>
+    <item>
+      <title>Beta Corp: Business Analyst</title>
+      <region>USA Only</region>
+      <skills>SQL</skills>
+      <category>Data Analysis</category>
+      <type>Full-Time</type>
+      <description><![CDATA[<p>Business Analyst for our US team. Must be located in the United States.</p>]]></description>
+      <pubDate>Wed, 04 Nov 2026 12:00:00 +0000</pubDate>
+      <expires_at>Thu, 04 Dec 2026 12:00:00 +0000</expires_at>
+      <guid>https://weworkremotely.com/remote-jobs/beta-corp-business-analyst</guid>
+      <link>https://weworkremotely.com/remote-jobs/beta-corp-business-analyst</link>
+    </item>
+    <item>
+      <title>Support Specialist</title>
+      <region>Anywhere in the World</region>
+      <skills>Customer Support</skills>
+      <category>Customer Support</category>
+      <type>Part-Time</type>
+      <description><![CDATA[<p>Customer support specialist, English fluent, 1+ years of experience.</p>]]></description>
+      <pubDate>Tue, 03 Nov 2026 12:00:00 +0000</pubDate>
+      <guid>https://weworkremotely.com/remote-jobs/support-specialist</guid>
+      <link>https://weworkremotely.com/remote-jobs/support-specialist?utm_source=rss</link>
+    </item>
+  </channel>
+</rss>

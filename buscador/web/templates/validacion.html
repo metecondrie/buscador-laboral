@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Validación del ranking</h1>
+<p class="sub">
+  Estas 25 ofertas salen de tu base real. No están elegidas para quedar bien: incluyen los
+  falsos positivos que reportaste y títulos afines que el sistema descartó, para detectar
+  también falsos negativos. Tu veredicto es lo único que convierte el ranking en algo medible.
+</p>
+
+<div class="grilla" style="margin-bottom:1rem">
+  <div class="kpi"><b>{{ metricas.revisadas }}/{{ metricas.total }}</b><small>revisadas</small></div>
+  <div class="kpi"><b>{{ metricas.si }}</b><small>sí postularía</small></div>
+  <div class="kpi"><b>{{ metricas.no }}</b><small>no sirve</small></div>
+  <div class="kpi"><b>{{ metricas.duda }}</b><small>dudosa</small></div>
+  <div class="kpi">
+    <b>{{ (metricas.precision_pct ~ ' %') if metricas.precision_pct is not none else '—' }}</b>
+    <small>precisión sobre casos resueltos</small>
+  </div>
+  <div class="kpi"><b>{{ metricas.falsos_positivos }}</b><small>falsos positivos · {{ metricas.falsos_negativos }} falsos negativos</small></div>
+</div>
+
+<p class="aviso">{{ metricas.conclusion }}</p>
+
+{% if metricas.por_regla %}
+<p class="meta" style="margin-bottom:1rem">
+  {% for regla, cubo in metricas.por_regla.items() %}
+  <span class="badge">{{ regla }}: sí {{ cubo.si }} · no {{ cubo.no }} · duda {{ cubo.duda }}</span>
+  {% endfor %}
+</p>
+{% endif %}
+
+{% if metricas.ejemplos_falsos_positivos %}
+<div class="aviso alerta">
+  <strong>Falsos positivos detectados:</strong>
+  {% for f in metricas.ejemplos_falsos_positivos %}
+    {{ f.titulo[:50] }}{% if f.comentario %} («{{ f.comentario[:60] }}»){% endif %}{% if not loop.last %} · {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+{% if metricas.ejemplos_falsos_negativos %}
+<div class="aviso">
+  <strong>Posibles falsos negativos</strong> (los descartamos y vos los aceptarías):
+  {% for f in metricas.ejemplos_falsos_negativos %}
+    {{ f.titulo[:50] }}{% if not loop.last %} · {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+{% for o in items %}
+<article class="card" id="item-{{ o.job_id }}">
+  <div class="score">
+    <b>{{ '%.0f'|format(o.score) if o.score is not none else '—' }}</b>
+    <small>compat.</small>
+  </div>
+  <h2>{{ loop.index }}. {{ o.titulo }}</h2>
+  <div class="meta">
+    <span>{{ o.empresa or "empresa no publicada" }}</span>
+    <span>{{ o.fuente_principal }}</span>
+    {% if o.publicado_en %}<span>publicada {{ o.publicado_en[:10] }}</span>{% endif %}
+  </div>
+
+  <div class="meta" style="margin-top:.45rem">
+    <span class="badge {{ o.elegibilidad or 'unknown' }}">{{ o.elegibilidad or 'sin análisis' }}</span>
+    {% if o.confianza %}<span class="badge confianza-{{ o.confianza }}">confianza {{ o.confianza }}</span>{% endif %}
+    <span class="badge {{ o.modalidad or 'unknown' }}">{{ o.modalidad or 'modalidad sin dato' }}</span>
+    <span class="badge">{{ o.territorio or 'territorio no publicado' }}</span>
+    <span class="badge">vigencia {{ o.estado_vigencia }}</span>
+    {% if o.veredicto %}<span class="estado {{ 'guardar' if o.veredicto == 'si' else ('descartar' if o.veredicto == 'no' else 'interesar') }}">tu veredicto: {{ o.veredicto }}</span>{% endif %}
+  </div>
+
+  <p class="chico" style="margin:.6rem 0 0"><strong>Por qué:</strong> {{ o.motivo_elegibilidad or '—' }}</p>
+  {% if o.razones %}
+  <ul class="razones">
+    {% for r in o.razones[:4] %}<li>{{ r.texto }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if o.incertidumbres %}
+  <p class="aviso" style="margin-top:.5rem">Incertidumbres: {{ o.incertidumbres|join('; ') }}</p>
+  {% endif %}
+
+  <details style="margin-top:.6rem">
+    <summary class="chico">Ver descripción y requisitos</summary>
+    <pre style="max-height:320px">{{ o.descripcion or "La fuente no publicó descripción." }}</pre>
+  </details>
+
+  <div class="acciones" style="margin-top:.5rem">
+    {% if o.url_atribucion %}
+    <a href="{{ o.url_atribucion }}" target="_blank" rel="noopener noreferrer nofollow">
+      <button type="button">Abrir aviso original</button>
+    </a>
+    {% endif %}
+    <a href="/oferta/{{ o.job_id }}"><button type="button">Ficha completa</button></a>
+  </div>
+
+  <form method="post" action="/validacion/{{ o.job_id }}" style="margin-top:.8rem">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="muestra" value="{{ muestra }}">
+    <div class="barra" style="margin-bottom:.4rem">
+      <label style="display:inline-flex;align-items:center;gap:.3rem">
+        <input type="radio" name="veredicto" value="si" {% if o.veredicto == 'si' %}checked{% endif %} required>
+        Sí, me postularía
+      </label>
+      <label style="display:inline-flex;align-items:center;gap:.3rem">
+        <input type="radio" name="veredicto" value="no" {% if o.veredicto == 'no' %}checked{% endif %}>
+        No sirve
+      </label>
+      <label style="display:inline-flex;align-items:center;gap:.3rem">
+        <input type="radio" name="veredicto" value="duda" {% if o.veredicto == 'duda' %}checked{% endif %}>
+        Dudosa
+      </label>
+    </div>
+    <input type="text" name="comentario" value="{{ o.comentario or '' }}"
+           placeholder="Por qué (opcional, pero ayuda a corregir)" size="60">
+    <button class="primario" type="submit">Guardar veredicto</button>
+    {% if o.actualizado_en %}<span class="chico">guardado {{ o.actualizado_en[:16] }}</span>{% endif %}
+  </form>
+</article>
+{% endfor %}
+
+{% if metricas.revisadas == 0 %}
+<p class="aviso">
+  Todavía no hay veredictos. Con 10 o 15 alcanza para ver si el criterio funciona; no hace
+  falta completar las 25 de una sentada. Lo que marques queda guardado y sobrevive a
+  cualquier reclasificación.
+</p>
+{% endif %}
+{% endblock %}

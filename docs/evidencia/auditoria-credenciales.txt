@@ -1,0 +1,24 @@
+==========================================================================
+AUDITORÍA DE CREDENCIALES — sólo lectura, sin exponer valores
+==========================================================================
+
+[1] Variables de entorno
+  proceso          39 car. · huella d47bcf310e31 · formato AIza
+  usuario (HKCU)   39 car. · huella d47bcf310e31 · formato AIza
+  sistema (HKLM)   ausente
+
+[4] Administrador de credenciales de Windows
+  entradas totales: 95 · coincidentes: 9
+  detalle omitido en esta copia: 8 de las 9 entradas corresponden a
+  credenciales de otras aplicaciones del equipo (identificadores de cuentas
+  de terceros). Ninguna contenía una clave del buscador ni un valor con
+  formato AIza. Se conserva sólo la entrada relacionada con la IA del proyecto:
+  · objetivo='gemini:antigravity' usuario='antigravity' bytes=600 clave=no
+
+[5] Almacén DPAPI del buscador
+  no existe la carpeta
+
+[6] Archivos con claves embebidas
+
+[4] Huellas distintas encontradas
+  d47bcf310e31: 2 origen(es) -> entorno:proceso, entorno:usuario (HKCU)

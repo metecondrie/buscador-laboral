@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Historial</h1>
+<p class="sub">Qué viste, qué decidiste y cómo cambió cada oferta con el tiempo. Nada se borra: cada detección queda
+  registrada con su fuente.</p>
+
+<div class="barra">
+  <a href="/historial"><button type="button" {% if not accion %}class="primario"{% endif %}>Todas las decisiones</button></a>
+  {% for a in ['guardar','interesar','descartar','deshacer'] %}
+  <a href="/historial?accion={{ a }}"><button type="button" {% if accion == a %}class="primario"{% endif %}>{{ a }}</button></a>
+  {% endfor %}
+</div>
+
+<h2>Tus decisiones</h2>
+{% if eventos %}
+<table style="margin-bottom:1.4rem">
+  <thead><tr><th>Cuándo</th><th>Acción</th><th>Oferta</th><th>Empresa</th></tr></thead>
+  <tbody>
+  {% for e in eventos %}
+    <tr>
+      <td>{{ e.creado_en[:16] }}</td>
+      <td><span class="estado {{ e.accion }}">{{ e.accion }}</span></td>
+      <td><a href="/oferta/{{ e.job_id }}">{{ e.titulo }}</a></td>
+      <td>{{ e.empresa or '—' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="chico">Sin decisiones registradas todavía.</p>
+{% endif %}
+
+<h2>Ofertas con más movimiento</h2>
+<table style="margin-bottom:1.4rem">
+  <thead><tr><th>Oferta</th><th>Empresa</th><th>Versiones</th><th>Observaciones</th><th>Fuentes</th>
+             <th>Primera detección</th><th>Última</th></tr></thead>
+  <tbody>
+  {% for v in versiones %}
+    <tr>
+      <td><a href="/oferta/{{ v.id }}">{{ v.titulo }}</a></td>
+      <td>{{ v.empresa or '—' }}</td>
+      <td>{{ v.versiones }}</td>
+      <td>{{ v.observaciones }}</td>
+      <td class="chico">{{ v.fuentes or '—' }}</td>
+      <td>{{ v.primera_deteccion[:10] }}</td>
+      <td>{{ v.ultima_deteccion[:10] }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Corridas</h2>
+<table>
+  <thead><tr><th>#</th><th>Causa</th><th>Estado</th><th>Inicio</th><th>Fin</th></tr></thead>
+  <tbody>
+  {% for r in corridas %}
+    <tr><td>{{ r.id }}</td><td>{{ r.causa }}</td><td>{{ r.estado }}</td>
+        <td>{{ r.started_at[:19] }}</td><td>{{ (r.finished_at or '')[:19] }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

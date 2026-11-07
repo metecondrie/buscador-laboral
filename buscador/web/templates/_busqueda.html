@@ -1,0 +1,39 @@
+{% if busqueda %}
+<section class="busqueda" id="panel-busqueda" data-csrf="{{ csrf }}">
+  <div class="busqueda-cabecera">
+    <button type="button" id="btn-buscar" class="primario">Buscar ahora</button>
+    <button type="button" id="btn-cancelar" class="peligro" hidden>Cancelar</button>
+    <span id="busqueda-fase" class="fase" data-fase="inactiva">Sin búsqueda en curso</span>
+    <span id="busqueda-nuevas" class="nuevas" hidden></span>
+  </div>
+
+  <div class="barra-progreso" id="busqueda-barra" role="progressbar"
+       aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
+    <div id="busqueda-relleno"></div>
+  </div>
+  <p class="chico" id="busqueda-fuentes">Todavía no hay fuentes planificadas.</p>
+  <p class="chico" id="busqueda-cola"></p>
+
+  <div class="contadores">
+    <div><b id="c-revisadas">—</b><small>revisadas</small></div>
+    <div><b id="c-nuevas">—</b><small>nuevas</small></div>
+    <div><b id="c-duplicadas">—</b><small>duplicadas</small></div>
+    <div><b id="c-elegibles">—</b><small>elegibles</small></div>
+    <div><b id="c-dudosas">—</b><small>dudosas</small></div>
+    <div><b id="c-incompatibles">—</b><small>incompatibles</small></div>
+  </div>
+
+  <p class="chico" id="busqueda-ia">IA desactivada</p>
+  <p class="chico" id="busqueda-nota"></p>
+  <p class="aviso" id="busqueda-resumen" hidden></p>
+  <noscript>
+    <form method="post" action="/buscar">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="volver" value="{{ request.url.path }}">
+      <button type="submit" class="primario">Buscar ahora (sin JavaScript)</button>
+    </form>
+    <p class="chico">Sin JavaScript no hay actualización automática: recargá la página para ver
+      el avance. El progreso se guarda en la base y no se pierde.</p>
+  </noscript>
+</section>
+{% endif %}

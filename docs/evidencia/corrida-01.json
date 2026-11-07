@@ -1,0 +1,53 @@
+{
+  "estado": "ok",
+  "run_id": 1,
+  "run_epoch": "dae77f49f88041d4a21f3bbb7a12604f",
+  "duracion_ms": 8184.8,
+  "tareas_recuperadas": 0,
+  "tareas_procesadas": 260,
+  "avisos_entregados": 1,
+  "fuentes": [
+    {
+      "source_id": "F01",
+      "nombre": "We Work Remotely",
+      "estado": "success",
+      "http_status": 200,
+      "observaciones": 100,
+      "nuevas": 100,
+      "actualizadas": 0,
+      "sin_cambios": 0,
+      "encoladas": 100,
+      "error": null,
+      "ms": 2026.6
+    },
+    {
+      "source_id": "F02",
+      "nombre": "Himalayas",
+      "estado": "success",
+      "http_status": 200,
+      "observaciones": 60,
+      "nuevas": 60,
+      "actualizadas": 0,
+      "sin_cambios": 0,
+      "encoladas": 60,
+      "error": null,
+      "ms": 953.0
+    },
+    {
+      "source_id": "F03",
+      "nombre": "Jobicy",
+      "estado": "success",
+      "http_status": 200,
+      "observaciones": 100,
+      "nuevas": 100,
+      "actualizadas": 0,
+      "sin_cambios": 0,
+      "encoladas": 100,
+      "error": null,
+      "ms": 2940.6
+    }
+  ],
+  "cola": {
+    "completed": 260
+  }
+}

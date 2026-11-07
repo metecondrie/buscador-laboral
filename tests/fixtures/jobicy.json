@@ -1,0 +1,40 @@
+{
+  "apiVersion": "2.2.19",
+  "jobCount": 2,
+  "hasMore": true,
+  "nextCursor": "jobicy-cursor-de-prueba",
+  "jobs": [
+    {
+      "id": 900001,
+      "url": "https://jobicy.com/jobs/900001-reporting-analyst",
+      "jobTitle": "Reporting Analyst",
+      "companyName": "Epsilon Health",
+      "jobGeo": "Anywhere",
+      "jobLevel": "Junior",
+      "jobType": ["Full-Time"],
+      "jobIndustry": ["Data Analysis"],
+      "jobDescription": "<p>Build weekly reports with SQL and Excel. Python desirable.</p>",
+      "jobExcerpt": "Reporting analyst, remote",
+      "pubDate": "2026-11-05T09:00:00+00:00",
+      "salaryMin": 900,
+      "salaryMax": 1200,
+      "salaryPeriod": "monthly"
+    },
+    {
+      "id": 900002,
+      "url": "https://jobicy.com/jobs/900002-customer-support",
+      "jobTitle": "Customer Support Agent",
+      "companyName": "Zeta Travel",
+      "jobGeo": "Philippines",
+      "jobLevel": "Any",
+      "jobType": ["Contract"],
+      "jobIndustry": ["Customer Service"],
+      "jobDescription": "<p>Support customers by chat. Night shift.</p>",
+      "jobExcerpt": "Support agent",
+      "pubDate": "2026-11-04T09:00:00+00:00",
+      "salaryMin": null,
+      "salaryMax": null,
+      "salaryPeriod": null
+    }
+  ]
+}

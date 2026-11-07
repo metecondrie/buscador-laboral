@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Actividad</h1>
+
+{% if busqueda == 'ocupado' %}
+  <p class="aviso">Ya hay una corrida activa. Se omite esta solicitud; no se encolan duplicados.</p>
+{% elif busqueda == 'iniciada' %}
+  <p class="aviso">Corrida iniciada en segundo plano. Recargá esta página cuando termine.</p>
+{% endif %}
+
+{% if tarea.estado == 'running' %}
+<div class="aviso">Corrida en curso: {{ tarea.detalle }}. Esta página no se actualiza sola.</div>
+{% elif tarea.estado == 'ok' %}
+<div class="aviso bien">Última corrida desde la interfaz: {{ tarea.detalle }}</div>
+{% elif tarea.estado == 'error' %}
+<div class="aviso alerta">La última corrida falló: {{ tarea.detalle }}</div>
+{% endif %}
+
+<div class="barra" style="justify-content:space-between">
+  <div class="meta">
+    <span>cola: {% for k, v in cola.items() %}{{ k }}={{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</span>
+  </div>
+  <div class="acciones" style="margin:0">
+    <form method="post" action="/buscar">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="primario" type="submit" {% if tareas.corrida.estado == 'running' %}disabled{% endif %}>Buscar ahora</button>
+    </form>
+    <form method="post" action="/avisos/leidos">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit">Marcar avisos leídos</button>
+    </form>
+  </div>
+</div>
+
+<div class="grilla" style="margin-bottom:1.2rem">
+  <div class="kpi"><b>{{ totales.ofertas }}</b><small>ofertas canónicas</small></div>
+  <div class="kpi"><b>{{ totales.observaciones }}</b><small>observaciones</small></div>
+  <div class="kpi"><b>{{ totales.analisis }}</b><small>análisis vigentes</small></div>
+  <div class="kpi"><b>{{ totales.avisos }}</b><small>avisos históricos</small></div>
+</div>
+
+{% if incidentes_abiertos %}
+<h2>Incidentes abiertos</h2>
+<table style="margin-bottom:1.2rem">
+  <thead><tr><th>Fuente</th><th>Código</th><th>Mensaje</th><th>Desde</th></tr></thead>
+  <tbody>
+  {% for i in incidentes_abiertos[:8] %}
+    <tr><td>{{ i.source_id or '—' }}</td><td>{{ i.codigo }}</td>
+        <td class="chico">{{ (i.mensaje or '')[:140] }}</td><td>{{ i.creado_en[:16] }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<h2>Bandeja de avisos</h2>
+{% if avisos %}
+<table style="margin-bottom:1.2rem">
+  <thead><tr><th>Cuándo</th><th>Oferta</th><th>Compat.</th><th>Estado</th></tr></thead>
+  <tbody>
+  {% for a in avisos %}
+    <tr>
+      <td>{{ a.creado_en[:16] }}{% if not a.leido_en %}<div class="chico">sin leer</div>{% endif %}</td>
+      <td><a href="/oferta/{{ a.job_id }}">{{ a.titulo }}</a><div class="chico">{{ a.empresa or '—' }}</div></td>
+      <td>{{ '%.0f'|format(a.score) if a.score is not none else '—' }}</td>
+      <td>{{ a.estado }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="chico">Sin avisos todavía. Se emite uno cuando una oferta compatible supera 75 puntos, está vigente y no
+  tiene incertidumbres decisivas.</p>
+{% endif %}
+
+<h2>Últimas corridas</h2>
+<table style="margin-bottom:1.2rem">
+  <thead><tr><th>#</th><th>Causa</th><th>Estado</th><th>Inicio</th><th>Fin</th><th>Época</th></tr></thead>
+  <tbody>
+  {% for r in corridas %}
+    <tr><td>{{ r.id }}</td><td>{{ r.causa }}</td><td>{{ r.estado }}</td>
+        <td>{{ r.started_at[:19] }}</td><td>{{ (r.finished_at or '')[:19] }}</td>
+        <td><code>{{ r.run_epoch[:8] }}</code></td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Detalle por fuente</h2>
+<table>
+  <thead><tr><th>Corrida</th><th>Fuente</th><th>Estado</th><th>HTTP</th><th>Obs.</th><th>Nuevas</th>
+             <th>Relevantes</th><th>Error</th></tr></thead>
+  <tbody>
+  {% for s in por_fuente %}
+    <tr>
+      <td>{{ s.run_id }}</td><td>{{ s.source_id }}</td><td>{{ s.estado }}</td>
+      <td>{{ s.http_status or '—' }}</td><td>{{ s.observaciones }}</td><td>{{ s.nuevas }}</td>
+      <td>{{ s.relevantes }}</td>
+      <td class="chico">{{ (s.error_code ~ ': ' ~ (s.error_msg or '')) if s.error_code else '' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

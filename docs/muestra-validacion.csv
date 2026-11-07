@@ -1,0 +1,26 @@
+﻿n;titulo;empresa;fuente;modalidad;region;elegibilidad;compatibilidad;confianza;motivo;veredicto;comentario
+1;Remote Data Entry Clerk;NoGigiddy;F01;remote;Anywhere in the World;eligible;100.0;media;remoto, territorio compatible y seniority acorde;;
+2;Remote Office Assistant;Coalition Technologies;F11;remote;Worldwide;eligible;100.0;alta;remoto, territorio compatible y seniority acorde;;
+3;Clinical Data Manager;Penumbra;F04;remote;Your Remote US Home Office;incompatible;;baja;la región declarada apunta a Estados Unidos: Your Remote US Home Office;;
+4;Sales Operations Analyst;Calabrio;F04;unknown;;doubtful;77.1;media;la fuente no publica el territorio admitido;;
+5;Consumer Support Specialist (Weekend Shift, Sunday - Thursday);Keeper Security;F01;remote;Anywhere in the World;doubtful;;media;formación: bachelor s degree preferred;;
+6;MSP Mac Help Desk Guru (work from home);Ignition, Inc.;F01;remote;Anywhere in the World;doubtful;;media;pide 5+ años y el perfil cubre sólo 0 % de las habilidades;;
+7;Scaled Customer Success Manager;Dropbox;F01;remote;Anywhere in the World;doubtful;;media;el título implica responsabilidad de gestión: Scaled Customer Success Manager;;
+8;Partner Operations Manager;Mecka;F04;unknown;;doubtful;;baja;indicio en el cuerpo con 'reporting' (sin confirmar en el título);;
+9;Customer Success Associate;Voltus;F04;remote;Remote;doubtful;;media;región declarada no concluyente: Remote;;
+10;Customer Support Specialist;Ultimate Marketing;F04;unknown;;doubtful;;media;la fuente no publica el territorio admitido;;
+11;Technical Customer Support;QuickMail;F04;unknown;;doubtful;;media;la fuente no publica el territorio admitido;;
+12;Manager, Scaled Customer Success Strategy & Operations;ramp;F14;remote;San Francisco, CA (remote);incompatible;;baja;la región es una ciudad de EE. UU.: San Francisco, CA (remote);;
+13;Risk&AI Manager;Feedzai;F01;remote;Anywhere in the World;incompatible;;baja;el título no es afín a las categorías del perfil;;
+14;Paid Ads Specialist;Paid Ads Academy;F01;remote;Anywhere in the World;incompatible;;baja;el título no es afín a las categorías del perfil;;
+15;Software Engineer Infrastructure;Sodalis, Inc.;F04;hybrid;Palo Alto;incompatible;;baja;el título corresponde a un rol fuera de las categorías del perfil;;
+16;Agile Program Manager;Toptal;F01;remote;Anywhere in the World;incompatible;;baja;el título no es afín a las categorías del perfil;;
+17;Commercial Data Scientist;Doximity;F03;onsite;USA;incompatible;;baja;la región declarada apunta a Estados Unidos: USA;;
+18;Product Owner;Zanda Health;F01;remote;Anywhere in the World;incompatible;;baja;el título no es afín a las categorías del perfil;;
+19;Contracts Manager Federal;Akicita Federal, LLC;F04;remote;Remote;incompatible;;baja;el título no es afín a las categorías del perfil;;
+20;Offshore Virtual Executive Assistant to the CEO;Collective Residential;F01;onsite;North America Only;incompatible;;baja;sin coincidencia con las diez categorías del perfil;;
+21;MEDICAL VIRTUAL ASSISTANT;Vital Virtuals Global HR Solutions LLC;F01;onsite;Latin America Only;incompatible;;baja;presencial en Latin America Only: el perfil requiere remoto;;
+22;Staff Technical Support Engineer (Web App);Horizon3;F01;remote;Anywhere in the World;incompatible;;baja;el título declara un nivel superior al perfil: Staff Technical Support Engineer (Web App);;
+23;Quality Analyst - Clinical Validation Auditor (CVA), Healthcare;EXL;F01;onsite;USA Only;incompatible;;baja;sin coincidencia con las diez categorías del perfil;;
+24;Client Service Analyst - P2P;Bybit;F01;remote;Anywhere in the World;incompatible;;baja;sin coincidencia con las diez categorías del perfil;;
+25;Client Service Analyst - Livechat (Turkish required);Bybit;F01;remote;Anywhere in the World;incompatible;;baja;sin coincidencia con las diez categorías del perfil;;

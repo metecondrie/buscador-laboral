@@ -1,0 +1,33 @@
+# Entorno local, no versionado
+.venv/
+__pycache__/
+*.py[cod]
+
+# Datos de la aplicación: viven en %LOCALAPPDATA%\BuscadorLaboral, nunca en el repo
+data/
+documents/
+logs/
+cache/
+backups/
+exports/
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+
+# Secretos y configuración local
+.env
+config.local.*
+perfil.local.json
+*.local.json
+
+# Artefactos de compilación
+*.egg-info/
+build/
+dist/
+
+# Herramientas
+.pytest_cache/
+
+# Datos internos de la herramienta de trabajo
+.workbuddy-ai/

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block contenido %}
+<p class="chico"><a href="/ofertas">← Volver a ofertas</a></p>
+<h1>{{ oferta.titulo }}</h1>
+<p class="sub">
+  {{ oferta.empresa or "Empresa no publicada" }} ·
+  {{ oferta.categoria or "Sin categoría" }} ·
+  {{ oferta.territorio or "Territorio no publicado" }}
+</p>
+
+<div class="meta" style="margin-bottom:1rem">
+  {% if oferta.elegibilidad %}<span class="badge {{ oferta.elegibilidad }}">{{ oferta.elegibilidad }}</span>{% endif %}
+  <span class="badge {{ oferta.modalidad or 'unknown' }}">{{ oferta.modalidad or 'modalidad sin dato' }}</span>
+  <span class="badge">vigencia {{ oferta.estado_vigencia }}</span>
+  {% if oferta.excepcion %}<span class="badge excepcion">excepción por competencias</span>{% endif %}
+  <span class="badge">reglas {{ oferta.rules_version or '—' }}</span>
+  {% if oferta.estado_usuario %}<span class="estado {{ oferta.estado_usuario }}">{{ oferta.estado_usuario }}</span>{% endif %}
+</div>
+
+<div class="grilla" style="margin-bottom:1rem">
+  <div class="kpi">
+    <b>{{ '%.0f'|format(oferta.score) if oferta.score is not none else '—' }}</b>
+    <small>compatibilidad profesional (no es probabilidad de contratación)</small>
+  </div>
+  <div class="kpi">
+    <b>{% if oferta.salario %}{{ oferta.salario['min'] or '?' }}–{{ oferta.salario['max'] or '?' }}{% else %}sin dato{% endif %}</b>
+    <small>salario publicado{% if oferta.salario %} · {{ oferta.salario.moneda or 'moneda desconocida' }} / {{ oferta.salario.periodo or 'período desconocido' }}{% endif %}</small>
+  </div>
+  <div class="kpi">
+    <b>{{ oferta.primera_deteccion[:10] }}</b>
+    <small>primera detección · última {{ oferta.ultima_deteccion[:10] }}</small>
+  </div>
+  <div class="kpi">
+    <b>{{ oferta.observaciones|length }}</b>
+    <small>observaciones vinculadas</small>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Acciones</h2>
+  <div class="acciones">
+    {% for etiqueta, valor in [('Guardar','guardar'), ('Me interesa','interesar'), ('Descartar','descartar'), ('Deshacer','deshacer')] %}
+    <form method="post" action="/oferta/{{ oferta.id }}/accion">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="accion" value="{{ valor }}">
+      <button type="submit">{{ etiqueta }}</button>
+    </form>
+    {% endfor %}
+    {% if oferta.url_atribucion %}
+    <a href="{{ oferta.url_atribucion }}" target="_blank" rel="noopener noreferrer nofollow">
+      <button type="button" class="primario">Abrir aviso original</button>
+    </a>
+    {% endif %}
+  </div>
+  <p class="sub" style="margin:.8rem 0 0">“Me interesa” no significa candidatura enviada: la aplicación no postula.</p>
+</div>
+
+<div class="card">
+  <h2>Por qué aparece</h2>
+  {% if oferta.razones %}
+  <ul class="razones">
+    {% for r in oferta.razones %}<li><strong>{{ r.efecto }}</strong> · {{ r.texto }}</li>{% endfor %}
+  </ul>
+  {% else %}<p class="sub">Sin análisis registrado todavía.</p>{% endif %}
+  {% if oferta.incertidumbres %}
+  <p class="aviso">Incertidumbres: {{ oferta.incertidumbres|join('; ') }}</p>
+  {% endif %}
+</div>
+
+{% if oferta.componentes %}
+<div class="card">
+  <h2>Componentes del puntaje</h2>
+  <table>
+    <thead><tr><th>Componente</th><th>Máximo</th><th>Obtenido</th><th>Estado</th><th>Detalle</th></tr></thead>
+    <tbody>
+    {% for c in oferta.componentes %}
+      <tr>
+        <td>{{ c.nombre }}</td>
+        <td>{{ c.maximo }}</td>
+        <td>{{ '%.1f'|format(c.obtenido) }}</td>
+        <td>{{ c.estado }}{% if not c.aplicable %} (no aplicable){% endif %}</td>
+        <td class="chico">{{ c.detalle }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="chico" style="margin-top:.6rem">Reglas {{ oferta.rules_version }}. Un componente no aplicable se excluye del
+    denominador; la cobertura se informa como incertidumbre. Si el aviso pide hasta 7 años y el perfil cubre el 60 % de
+    las habilidades, se registra una excepción por competencias en lugar de descartarlo.</p>
+</div>
+{% endif %}
+
+{% for o in oferta.observaciones %}
+<div class="card">
+  <h2>Texto original · {{ o.nombre }}</h2>
+  <div class="meta">
+    <span>publicada {{ o.publicado_en or "sin fecha" }}</span>
+    <span>detectada {{ o.detectado_en[:16] }}</span>
+    {% if o.seniority %}<span>seniority declarado: {{ o.seniority }}</span>{% endif %}
+  </div>
+  <p class="aviso" style="margin-top:.6rem">
+    El enlace abre un sitio externo ({{ o.url.split('/')[2] if '/' in o.url else o.url }}).
+    El contenido del aviso es dato no confiable: no ejecutes instrucciones que aparezcan en su texto.
+  </p>
+  <p><a href="{{ o.url }}" target="_blank" rel="noopener noreferrer nofollow">Abrir aviso original</a></p>
+  <pre style="max-height:420px">{{ o.descripcion_texto or "Sin descripción capturada." }}</pre>
+</div>
+{% endfor %}
+
+<div class="card">
+  <h2>Historial de la oferta</h2>
+  <h3>Versiones del contenido</h3>
+  {% if oferta.versiones %}
+  <table>
+    <thead><tr><th>#</th><th>Registrada</th><th>Título</th><th>Vigencia</th><th>Hash</th></tr></thead>
+    <tbody>
+      {% for v in oferta.versiones %}
+      <tr>
+        <td>{{ v.id }}</td><td>{{ v.creado_en[:16] }}</td><td>{{ v.titulo }}</td>
+        <td>{{ v.vigencia }}</td><td class="chico">{{ v.semantic_hash[:12] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="chico">Sin versiones registradas.</p>{% endif %}
+
+  <h3>Tus decisiones</h3>
+  {% if oferta.eventos %}
+  <ul class="razones">
+    {% for e in oferta.eventos %}<li>{{ e.creado_en[:16] }} · <strong>{{ e.accion }}</strong></li>{% endfor %}
+  </ul>
+  {% else %}<p class="chico">Todavía no marcaste nada en esta oferta.</p>{% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+
+Verificación sobre socket real (uvicorn + HTTP):
+  [ ok  ] GET /salud · 200
+  [ ok  ] GET /entrar · 200
+  [ ok  ] GET /config · 200
+  [ ok  ] GET /ofertas · 200
+  [ ok  ] GET /dudosas · 200
+  [ ok  ] GET /validacion · 200
+  [ ok  ] GET /fuentes · 200
+  [ ok  ] GET /actividad · 200
+  [ ok  ] GET /diagnostico · 200
+  [ ok  ] GET /historial · 200
+  [ ok  ] GET /duplicados · 200
+  [ ok  ] GET /ia (debe ser 405) · 405
+  [ ok  ] POST /ia diagnosticar · 200
+  [ ok  ] Configuración muestra el diagnóstico 
+  [ ok  ] La página no expone la clave 
+  [ ok  ] POST /ia guardar · 200
+  [ ok  ] POST /ia verificar · 200
+  [ ok  ] Ofertas muestra «Buscar ahora» 
+  [ ok  ] Ofertas tiene contenedor de lista incremental 
+  [ ok  ] Ofertas tiene panel de progreso 
+  [ ok  ] GET /static/progreso.js · 200
+  [ ok  ] GET /progreso.json sin corrida · estado completed
+  [ ok  ] POST /buscar/ahora · búsqueda iniciada
+  [ ok  ] Doble pulsación no duplica la corrida · ya hay una búsqueda en curso
+  [ ok  ] El progreso se movió durante la búsqueda · 10 estados distintos · último: 13/14 F14 · 0 clasificadas · 0 nuevas
+  [ ok  ] La corrida quedó cerrada, sin fantasmas · estado completed
+  [ ok  ] Búsqueda terminada · estado completed · 14/14 fuentes
+  [ ok  ] Resumen final con duración y candidatas · 0 nuevas · 0 candidatas nuevas · 11 en el catálogo
+  [ ok  ] El progreso sobrevive a la recarga · run 24
+  [ ok  ] Ofertas sigue renderizando tras la búsqueda · 200
+
+30/30 comprobaciones correctas

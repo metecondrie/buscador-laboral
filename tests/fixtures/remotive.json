@@ -1,0 +1,42 @@
+{
+ "job-count": 2,
+ "jobs": [
+  {
+   "id": 1185979,
+   "url": "https://remotive.com/remote-jobs/writing/freelance-writer-1185979",
+   "title": "Freelance Writer",
+   "company_name": "IAPWE",
+   "company_logo": "https://remotive.com/job/1185979/logo",
+   "category": "Writing",
+   "tags": [
+    "REST"
+   ],
+   "job_type": "freelance",
+   "publication_date": "2026-11-04T16:53:35",
+   "candidate_required_location": "Worldwide",
+   "salary": "$50-$75 /hour",
+   "description": "<p class=\"p1\" style=\"font-variant-numeric: normal; font-variant-east-asian: normal; font-stretch: normal; line-height: normal; color: #000000;\">Our organization is seeking content writers to create articles and blog posts on a variety of topics.</p>\n<p class=\"p1\" style=\"font-variant-numeric: normal; font-variant-east-asian: normal; font-stretch: normal; line-height: normal; color: #000000;\"> </p>\n",
+   "company_logo_url": "https://remotive.com/job/1185979/logo"
+  },
+  {
+   "id": 2091166,
+   "url": "https://remotive.com/remote-jobs/all-others/content-reviewer-united-states-2091166",
+   "title": "Content Reviewer - United States",
+   "company_name": "TELUS Digital",
+   "company_logo": "https://remotive.com/job/2091166/logo",
+   "category": "All others",
+   "tags": [
+    "android",
+    "ios",
+    "social media",
+    "AI/ML"
+   ],
+   "job_type": "part_time",
+   "publication_date": "2026-11-04T13:39:06",
+   "candidate_required_location": "USA",
+   "salary": "$14/hour",
+   "description": "<p class=\"figma-padding-bottom-32 tw-border-b tw-border-[#E3E6E8]\" style=\"border-width: 0px 0px 1px; border-color: #e3e6e8; --tw-shadow: 0 0 #0000; --tw-ring-offset-width: 0px; --tw-ring-offset-color: #fff; --tw-ring-color: rgb(59 130 246 / .5); --tw-ring-offset-shadow: 0 0 #0000; --tw-ring-shadow: 0 0 #0000; --tw-border-spacing-x: 0; --tw-border-spacing-y: 0; --tw-translate-x: 0; --tw-translate-y",
+   "company_logo_url": "https://remotive.com/job/2091166/logo"
+  }
+ ]
+}

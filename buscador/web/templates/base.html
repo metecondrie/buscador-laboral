@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ titulo }} · Buscador laboral</title>
+<style>
+  :root {
+    --fondo: #f6f7f9; --panel: #ffffff; --texto: #1c2128; --suave: #5b6572;
+    --borde: #dfe3e8; --acento: #1f5f8b; --ok: #1f7a4d; --duda: #8a6100; --no: #9b2c2c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fondo); color: var(--texto);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header.top { background: var(--panel); border-bottom: 1px solid var(--borde);
+               padding: .6rem 1.2rem; display: flex; flex-wrap: wrap; gap: 1rem;
+               align-items: center; position: sticky; top: 0; z-index: 5; }
+  .brand { font-weight: 650; letter-spacing: -.01em; }
+  .tag { font-size: .7rem; font-weight: 600; color: var(--suave); border: 1px solid var(--borde);
+         border-radius: 999px; padding: .1rem .5rem; margin-left: .4rem; }
+  nav { display: flex; gap: .1rem; flex-wrap: wrap; }
+  nav a { color: var(--suave); text-decoration: none; padding: .32rem .55rem; border-radius: 6px;
+          font-weight: 500; font-size: .92rem; }
+  nav a:hover { background: #eef1f4; color: var(--texto); }
+  .pill { background: var(--acento); color: #fff; border-radius: 999px; padding: 0 .4rem;
+          font-size: .72rem; margin-left: .25rem; }
+  .pill.rojo { background: var(--no); }
+  .banner { background: #fff4d6; border-bottom: 1px solid #eddcae; color: #6b4e00;
+            padding: .5rem 1.2rem; font-size: .86rem; }
+  main { max-width: 1120px; margin: 0 auto; padding: 1.4rem 1.2rem 3rem; }
+  h1 { font-size: 1.5rem; margin: 0 0 .3rem; letter-spacing: -.02em; }
+  h2 { font-size: 1.02rem; margin: 0 0 .15rem; }
+  h3 { font-size: .95rem; margin: 1.2rem 0 .5rem; }
+  .sub { color: var(--suave); margin: 0 0 1.1rem; font-size: .92rem; }
+  .barra { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+  input[type=search], input[type=text], input[type=number], select, textarea {
+        padding: .45rem .6rem; border: 1px solid var(--borde);
+        border-radius: 6px; background: #fff; font: inherit; }
+  textarea { width: 100%; min-height: 130px; resize: vertical; }
+  label { font-size: .86rem; color: var(--suave); display: block; margin-bottom: .15rem; }
+  button { font: inherit; cursor: pointer; border-radius: 6px; padding: .4rem .7rem;
+           border: 1px solid var(--borde); background: #fff; }
+  button:hover { background: #eef1f4; }
+  button.primario { background: var(--acento); border-color: var(--acento); color: #fff; }
+  button.primario:hover { filter: brightness(1.08); }
+  button.peligro { color: var(--no); border-color: #e3c9c9; }
+  .card { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px;
+          padding: 1rem 1.1rem; margin-bottom: .8rem; }
+  .card h2 a { color: var(--texto); text-decoration: none; }
+  .card h2 a:hover { text-decoration: underline; }
+  .meta { color: var(--suave); font-size: .84rem; display: flex; gap: .8rem; flex-wrap: wrap; }
+  .score { float: right; text-align: center; border: 1px solid var(--borde); border-radius: 8px;
+           padding: .3rem .55rem; min-width: 62px; }
+  .score b { display: block; font-size: 1.15rem; }
+  .score small { color: var(--suave); font-size: .68rem; }
+  .razones { margin: .6rem 0 0; padding-left: 1.1rem; font-size: .87rem; color: #333; }
+  .razones li { margin: .12rem 0; }
+  .acciones { display: flex; gap: .4rem; margin-top: .7rem; flex-wrap: wrap; align-items: center; }
+  .acciones form { display: inline; }
+  .estado { font-size: .75rem; font-weight: 600; padding: .1rem .45rem; border-radius: 999px; }
+  .estado.guardar, .estado.interesar { background: #e3f0e8; color: var(--ok); }
+  .estado.descartar { background: #f6e3e3; color: var(--no); }
+  .badge { font-size: .75rem; padding: .1rem .45rem; border-radius: 999px; background: #eef1f4; color: var(--suave); }
+  .badge.eligible { background: #e3f0e8; color: var(--ok); }
+  .badge.doubtful { background: #fdf0d5; color: var(--duda); }
+  .badge.incompatible { background: #f6e3e3; color: var(--no); }
+  .badge.excepcion { background: #e8ecf7; color: #2b3f7a; }
+  .badge.confianza-alta { background: #e3f0e8; color: var(--ok); }
+  .badge.confianza-media { background: #fdf0d5; color: var(--duda); }
+  .badge.confianza-baja { background: #f6e3e3; color: var(--no); }
+  .badge.remote { background: #e3f0e8; color: var(--ok); }
+  .badge.onsite { background: #f6e3e3; color: var(--no); }
+  table { width: 100%; border-collapse: collapse; background: var(--panel);
+          border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; font-size: .86rem; }
+  th, td { text-align: left; padding: .5rem .65rem; border-bottom: 1px solid var(--borde); vertical-align: top; }
+  th { background: #f0f2f5; font-weight: 600; color: var(--suave); font-size: .75rem;
+       text-transform: uppercase; letter-spacing: .03em; }
+  tr:last-child td { border-bottom: none; }
+  pre { background: #f0f2f5; border: 1px solid var(--borde); border-radius: 8px;
+        padding: .8rem; overflow: auto; font-size: .78rem; white-space: pre-wrap; }
+  .aviso { border-left: 3px solid var(--acento); background: #eef4f8; padding: .6rem .8rem;
+           border-radius: 0 6px 6px 0; font-size: .86rem; }
+  .aviso.alerta { border-left-color: var(--no); background: #f9eeee; }
+  .aviso.bien { border-left-color: var(--ok); background: #eef7f1; }
+  .grilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .8rem; }
+  .kpi { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px; padding: .8rem 1rem; }
+  .kpi b { display: block; font-size: 1.5rem; letter-spacing: -.02em; }
+  .kpi small { color: var(--suave); font-size: .78rem; }
+  footer { color: var(--suave); font-size: .78rem; text-align: center; padding: 1.5rem; }
+  code { background: #eef1f4; padding: .05rem .28rem; border-radius: 4px; font-size: .85em; }
+  .chico { font-size: .78rem; color: var(--suave); }
+
+  /* Búsqueda manual: panel, barra de progreso y contadores. */
+  .busqueda { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px;
+              padding: .9rem 1.1rem; margin-bottom: 1rem; }
+  .busqueda-cabecera { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+  .busqueda-cabecera button { min-width: 8.5rem; }
+  .fase { font-size: .9rem; font-weight: 600; color: var(--texto); }
+  .fase[data-fase="fuentes"] { color: var(--acento); }
+  .fase[data-fase="analizando"] { color: var(--duda); }
+  .fase[data-fase="finalizada"] { color: var(--ok); }
+  .fase[data-fase="cancelada"], .fase[data-fase="fallida"],
+  .fase[data-fase="abandonada"] { color: var(--no); }
+  .fase[data-fase="fuentes"]::before, .fase[data-fase="analizando"]::before,
+  .fase[data-fase="preparando"]::before {
+    content: ""; display: inline-block; width: .55rem; height: .55rem; margin-right: .4rem;
+    border-radius: 50%; background: currentColor; animation: latir 1.1s ease-in-out infinite;
+  }
+  @keyframes latir { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+  .nuevas { font-size: .78rem; font-weight: 600; color: var(--ok); background: #e3f0e8;
+            border-radius: 999px; padding: .1rem .5rem; }
+  .barra-progreso { height: .55rem; background: #e8ebef; border-radius: 999px;
+                    overflow: hidden; margin: .7rem 0 .35rem; }
+  .barra-progreso > div { height: 100%; width: 0; background: var(--acento);
+                          border-radius: 999px; transition: width .35s ease; }
+  .contadores { display: flex; gap: 1.2rem; flex-wrap: wrap; margin: .5rem 0 .3rem; }
+  .contadores b { display: block; font-size: 1.15rem; letter-spacing: -.02em; }
+  .contadores small { color: var(--suave); font-size: .72rem; text-transform: uppercase;
+                      letter-spacing: .03em; }
+  .pill.activo { background: var(--duda); }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand">Buscador laboral <span class="tag">MVP {{ version_app }}</span></div>
+  <nav>
+    <a href="/ofertas">Ofertas<span class="pill activo" id="progreso-cabecera" hidden></span></a>
+    <a href="/dudosas">Dudosas</a>
+    <a href="/todas">Todas</a>
+    <a href="/guardadas">Guardadas</a>
+    <a href="/validacion">Validación</a>
+    <a href="/duplicados">Duplicados{% if duplicados %}<span class="pill">{{ duplicados }}</span>{% endif %}</a>
+    <a href="/historial">Historial</a>
+    <a href="/fuentes">Fuentes{% if incidentes %}<span class="pill rojo">{{ incidentes }}</span>{% endif %}</a>
+    <a href="/actividad">Actividad{% if avisos %}<span class="pill">{{ avisos }}</span>{% endif %}</a>
+    <a href="/config">Configuración</a>
+    <a href="/diagnostico">Diagnóstico</a>
+  </nav>
+</header>
+{% if perfil_demo %}
+<div class="banner">
+  Perfil de demostración activo: los puntajes sirven para probar el recorrido, no para decidir.
+  Cargá tus datos reales en <a href="/config">Configuración</a>.
+</div>
+{% endif %}
+<main>
+{% block contenido %}{% endblock %}
+</main>
+<footer>Buscador laboral {{ version_app }} · datos locales · el servidor solo escucha en 127.0.0.1</footer>
+<script src="/static/progreso.js"></script>
+</body>
+</html>

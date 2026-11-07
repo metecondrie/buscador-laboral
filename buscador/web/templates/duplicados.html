@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Posibles duplicados</h1>
+<p class="sub">
+  La regla del proyecto prohíbe fusionar ofertas sin identificador fuerte. Cuando dos fuentes publican el mismo puesto
+  con la misma empresa y un título equivalente, queda una sugerencia acá y decidís vos.
+  Aceptar no borra nada: la oferta absorbida deja de listarse y se puede revertir.
+</p>
+
+{% if not sugerencias %}
+<div class="card"><p>No hay duplicados sugeridos. Se generan al ingerir avisos nuevos de empresas ya conocidas.</p></div>
+{% endif %}
+
+{% for s in sugerencias %}
+<article class="card">
+  <div class="score"><b>{{ '%.0f'|format(s.similitud * 100) }}%</b><small>equivalencia</small></div>
+  <h2>{{ s.titulo_origen }}</h2>
+  <div class="meta">
+    <span>{{ s.empresa_origen or "sin empresa" }}</span>
+    <span class="badge">{{ s.estado }}</span>
+    <span>{{ s.creado_en[:16] }}</span>
+  </div>
+  <table style="margin-top:.7rem">
+    <thead><tr><th></th><th>Oferta</th><th>Fuente</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Absorbida</td>
+        <td><a href="/oferta/{{ s.job_origen }}">{{ s.titulo_origen }}</a></td>
+        <td>{{ s.fuente_origen }}</td>
+      </tr>
+      <tr>
+        <td>Conservada</td>
+        <td><a href="/oferta/{{ s.job_destino }}">{{ s.titulo_destino }}</a></td>
+        <td>{{ s.fuente_destino }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="chico" style="margin:.5rem 0 0">{{ s.motivo }}</p>
+
+  <div class="acciones">
+    {% if s.estado == 'sugerida' %}
+    <form method="post" action="/duplicados/{{ s.id }}/aceptar">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="primario">Es el mismo puesto</button>
+    </form>
+    <form method="post" action="/duplicados/{{ s.id }}/rechazar">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit">Son distintos</button>
+    </form>
+    {% elif s.estado == 'aceptada' %}
+    <form method="post" action="/duplicados/{{ s.id }}/revertir">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="peligro">Revertir la fusión</button>
+    </form>
+    {% endif %}
+  </div>
+</article>
+{% endfor %}
+{% endblock %}

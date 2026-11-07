@@ -1,0 +1,258 @@
+{
+  "estado": "ok",
+  "run_id": 9,
+  "run_epoch": "cffe2ec43932413d943dcc6e41039b94",
+  "duracion_ms": 12523.3,
+  "tareas_recuperadas": 0,
+  "tareas_procesadas": 41,
+  "reclasificadas_por_reglas": 0,
+  "avisos_entregados": 0,
+  "observaciones": 416,
+  "relevantes": 26,
+  "fuentes": [
+    {
+      "source_id": "F01",
+      "nombre": "We Work Remotely",
+      "estado": "success",
+      "http_status": null,
+      "observaciones": 50,
+      "nuevas": 0,
+      "actualizadas": 0,
+      "sin_cambios": 50,
+      "vinculadas": 0,
+      "encoladas": 0,
+      "error": null,
+      "particiones": [
+        {
+          "clave": "general",
+          "estado": "success",
+          "tomados": 20
+        },
+        {
+          "clave": "soporte",
+          "estado": "success",
+          "tomados": 20
+        },
+        {
+          "clave": "negocio",
+          "estado": "success",
+          "tomados": 10
+        }
+      ],
+      "ms": 3319.0,
+      "relevantes": 8,
+      "duplicadas": 1
+    },
+    {
+      "source_id": "F02",
+      "nombre": "Himalayas",
+      "estado": "success",
+      "http_status": 200,
+      "observaciones": 60,
+      "nuevas": 0,
+      "actualizadas": 0,
+      "sin_cambios": 60,
+      "vinculadas": 0,
+      "encoladas": 0,
+      "error": null,
+      "particiones": null,
+      "ms": 762.8,
+      "relevantes": 2,
+      "duplicadas": 3
+    },
+    {
+      "source_id": "F03",
+      "nombre": "Jobicy",
+      "estado": "success",
+      "http_status": null,
+      "observaciones": 52,
+      "nuevas": 0,
+      "actualizadas": 0,
+      "sin_cambios": 52,
+      "vinculadas": 0,
+      "encoladas": 0,
+      "error": null,
+      "particiones": [
+        {
+          "clave": "soporte",
+          "estado": "success",
+          "tomados": 15
+        },
+        {
+          "clave": "analista",
+          "estado": "success",
+          "tomados": 14
+        },
+        {
+          "clave": "reportes",
+          "estado": "success",
+          "tomados": 9
+        },
+        {
+          "clave": "datos",
+          "estado": "success",
+          "tomados": 14
+        }
+      ],
+      "ms": 964.0,
+      "relevantes": 4,
+      "duplicadas": 0
+    },
+    {
+      "source_id": "F04",
+      "nombre": "Remote OK",
+      "estado": "success",
+      "http_status": 200,
+      "observaciones": 60,
+      "nuevas": 0,
+      "actualizadas": 4,
+      "sin_cambios": 56,
+      "vinculadas": 0,
+      "encoladas": 4,
+      "error": null,
+      "particiones": null,
+      "ms": 841.8,
+      "relevantes": 7,
+      "duplicadas": 4
+    },
+    {
+      "source_id": "F05",
+      "nombre": "The Muse",
+      "estado": "success",
+      "http_status": null,
+      "observaciones": 40,
+      "nuevas": 0,
+      "actualizadas": 0,
+      "sin_cambios": 40,
+      "vinculadas": 0,
+      "encoladas": 0,
+      "error": null,
+      "particiones": [
+        {
+          "clave": "datos-remoto",
+          "estado": "success",
+          "tomados": 20
+        },
+        {
+          "clave": "datos-inicial",
+          "estado": "success",
+          "tomados": 20
+        },
+        {
+          "clave": "soporte-remoto",
+          "estado": "empty_valid",
+          "tomados": 0
+        }
+      ],
+      "ms": 2766.8,
+      "relevantes": 2,
+      "duplicadas": 11
+    },
+    {
+      "source_id": "F06",
+      "nombre": "Working Nomads",
+      "estado": "success",
+      "http_status": 200,
+      "observaciones": 32,
+      "nuevas": 0,
+      "actualizadas": 0,
+      "sin_cambios": 32,
+      "vinculadas": 0,
+      "encoladas": 0,
+      "error": null,
+      "particiones": null,
+      "ms": 1152.8,
+      "relevantes": 0,
+      "duplicadas": 1
+    },
+    {
+      "source_id": "F07",
+      "nombre": "NoDesk",
+      "estado": "success",
+      "http_status": 200,
+      "observaciones": 10,
+      "nuevas": 0,
+      "actualizadas": 1,
+      "sin_cambios": 9,
+      "vinculadas": 0,
+      "encoladas": 1,
+      "error": null,
+      "particiones": null,
+      "ms": 201.7,
+      "relevantes": 0,
+      "duplicadas": 1
+    },
+    {
+      "source_id": "F08",
+      "nombre": "Jobspresso",
+      "estado": "success",
+      "http_status": 200,
+      "observaciones": 20,
+      "nuevas": 0,
+      "actualizadas": 0,
+      "sin_cambios": 20,
+      "vinculadas": 0,
+      "encoladas": 0,
+      "error": null,
+      "particiones": null,
+      "ms": 251.3,
+      "relevantes": 0,
+      "duplicadas": 0
+    },
+    {
+      "source_id": "F09",
+      "nombre": "Python.org Jobs",
+      "estado": "success",
+      "http_status": 200,
+      "observaciones": 20,
+      "nuevas": 0,
+      "actualizadas": 0,
+      "sin_cambios": 20,
+      "vinculadas": 0,
+      "encoladas": 0,
+      "error": null,
+      "particiones": null,
+      "ms": 157.6,
+      "relevantes": 0,
+      "duplicadas": 2
+    },
+    {
+      "source_id": "F10",
+      "nombre": "Arbeitnow",
+      "estado": "success",
+      "http_status": 200,
+      "observaciones": 60,
+      "nuevas": 32,
+      "actualizadas": 4,
+      "sin_cambios": 24,
+      "vinculadas": 0,
+      "encoladas": 36,
+      "error": null,
+      "particiones": null,
+      "ms": 1324.5,
+      "relevantes": 2,
+      "duplicadas": 2
+    },
+    {
+      "source_id": "F11",
+      "nombre": "Remotive",
+      "estado": "success",
+      "http_status": 200,
+      "observaciones": 12,
+      "nuevas": 0,
+      "actualizadas": 0,
+      "sin_cambios": 12,
+      "vinculadas": 0,
+      "encoladas": 0,
+      "error": null,
+      "particiones": null,
+      "ms": 190.9,
+      "relevantes": 1,
+      "duplicadas": 1
+    }
+  ],
+  "pausadas": [],
+  "cola": {
+    "completed": 1035
+  }
+}

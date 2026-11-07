@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>{{ titulo }}</h1>
+<p class="sub">{{ nota }}</p>
+
+{% include "_busqueda.html" %}
+
+{% if filtros %}
+<form class="barra" method="get">
+  <input type="search" name="q" value="{{ q }}" placeholder="Título o empresa" size="18">
+  <select name="categoria">
+    <option value="">Toda categoría</option>
+    {% for c in categorias %}<option value="{{ c }}" {% if c == categoria %}selected{% endif %}>{{ c }}</option>{% endfor %}
+  </select>
+  <select name="fuente">
+    <option value="">Toda fuente</option>
+    {% for f in fuentes %}<option value="{{ f.source_id }}" {% if f.source_id == fuente %}selected{% endif %}>{{ f.source_id }} · {{ f.nombre }}</option>{% endfor %}
+  </select>
+  <select name="modalidad">
+    <option value="">Toda modalidad</option>
+    <option value="remote" {% if modalidad == 'remote' %}selected{% endif %}>Remoto</option>
+    <option value="hybrid" {% if modalidad == 'hybrid' %}selected{% endif %}>Híbrido</option>
+    <option value="onsite" {% if modalidad == 'onsite' %}selected{% endif %}>Presencial</option>
+    <option value="unknown" {% if modalidad == 'unknown' %}selected{% endif %}>Sin dato</option>
+  </select>
+  <select name="vigencia">
+    <option value="">Toda vigencia</option>
+    <option value="open" {% if vigencia == 'open' %}selected{% endif %}>Abierta</option>
+    <option value="closed" {% if vigencia == 'closed' %}selected{% endif %}>Cerrada</option>
+    <option value="unknown" {% if vigencia == 'unknown' %}selected{% endif %}>Sin dato</option>
+  </select>
+  <select name="excepcion">
+    <option value="">Con y sin excepción</option>
+    <option value="1" {% if excepcion == '1' %}selected{% endif %}>Sólo excepción por competencias</option>
+  </select>
+  <select name="orden">
+    <option value="score" {% if orden == 'score' %}selected{% endif %}>Mejor compatibilidad</option>
+    <option value="recientes" {% if orden == 'recientes' %}selected{% endif %}>Más recientes</option>
+    <option value="antiguedad" {% if orden == 'antiguedad' %}selected{% endif %}>Detectadas hace menos</option>
+    <option value="fuente" {% if orden == 'fuente' %}selected{% endif %}>Por fuente</option>
+    <option value="empresa" {% if orden == 'empresa' %}selected{% endif %}>Por empresa</option>
+  </select>
+  <button class="primario" type="submit">Filtrar</button>
+  <a href="{{ request.url.path }}"><button type="button">Limpiar</button></a>
+</form>
+{% endif %}
+
+<p class="chico"><span id="conteo-ofertas">{{ ofertas|length }} ofertas en esta vista</span>. Tope de 200 por página.</p>
+
+<div id="lista-ofertas">
+{% include "_lista_ofertas.html" %}
+</div>
+{% endblock %}

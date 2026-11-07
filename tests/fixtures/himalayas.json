@@ -1,0 +1,47 @@
+{
+  "comments": "fixture sintética con la forma real de la API; no es una captura de producción",
+  "updatedAt": "2026-11-06T10:00:00.000000Z",
+  "offset": 0,
+  "limit": 20,
+  "totalCount": 2,
+  "nextCursor": "cursor-de-prueba",
+  "jobs": [
+    {
+      "title": "Data Analyst (LATAM)",
+      "companyName": "Gamma Labs",
+      "companySlug": "gamma-labs",
+      "guid": "https://himalayas.app/companies/gamma-labs/jobs/data-analyst-latam",
+      "applicationLink": "https://himalayas.app/companies/gamma-labs/jobs/data-analyst-latam?utm_source=api",
+      "locationRestrictions": ["LATAM"],
+      "pubDate": 1793951101,
+      "expiryDate": 1796543101,
+      "description": "<p>SQL and Python required. Build dashboards in Power BI.</p>",
+      "excerpt": "Data Analyst for LATAM",
+      "employmentType": "Full Time",
+      "seniority": ["Entry-level"],
+      "categories": ["Data Analysis"],
+      "minSalary": 1500,
+      "maxSalary": 2200,
+      "currency": "USD",
+      "salaryPeriod": "monthly",
+      "timezoneRestrictions": ["-03:00"]
+    },
+    {
+      "title": "Senior Data Engineer",
+      "companyName": "Delta Cloud",
+      "companySlug": "delta-cloud",
+      "guid": "https://himalayas.app/companies/delta-cloud/jobs/senior-data-engineer",
+      "applicationLink": "https://himalayas.app/companies/delta-cloud/jobs/senior-data-engineer",
+      "locationRestrictions": ["Romania"],
+      "pubDate": 1793950000,
+      "description": "<p>7+ years of experience with SQL, Python and Airflow.</p>",
+      "employmentType": "Full Time",
+      "seniority": ["Senior"],
+      "categories": ["Data Engineering"],
+      "minSalary": null,
+      "maxSalary": null,
+      "currency": null,
+      "salaryPeriod": null
+    }
+  ]
+}

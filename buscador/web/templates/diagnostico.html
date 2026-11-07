@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Diagnóstico</h1>
+<p class="sub">Estado real del sistema, salud por fuente e incidentes. El paquete exportable no incluye claves ni
+  contenido completo de ofertas.</p>
+
+{% if request.query_params.get('paquete') %}
+<div class="aviso bien">Paquete generado: <code>{{ request.query_params.get('paquete') }}</code> en la carpeta de exportaciones.</div>
+{% endif %}
+
+<div class="grilla" style="margin-bottom:1.2rem">
+  <div class="kpi"><b>{{ datos.app.version }}</b><small>versión · reglas {{ datos.app.rules }} · esquema {{ datos.app.esquema }}</small></div>
+  <div class="kpi"><b>{{ datos.base.conteos.jobs }}</b><small>ofertas · {{ datos.base.conteos.observations }} observaciones</small></div>
+  <div class="kpi"><b>{{ datos.base.conteos.incidents }}</b><small>incidentes históricos · {{ abiertos|length }} abiertos</small></div>
+  <div class="kpi"><b>{{ datos.disco.libre_gb }} GB</b><small>libres de {{ datos.disco.total_gb }} GB</small></div>
+</div>
+
+<div class="barra">
+  <form method="post" action="/diagnostico/paquete">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="primario" type="submit">Generar paquete de diagnóstico</button>
+  </form>
+  <form method="post" action="/incidentes/resolver">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit">Marcar todos los incidentes como resueltos</button>
+  </form>
+  <a href="/fuentes"><button type="button">Ver fuentes</button></a>
+</div>
+
+<h2>Estado de la base</h2>
+<table style="margin-bottom:1.2rem">
+  <tbody>
+    <tr><th>journal_mode / synchronous</th><td>{{ datos.base.pragmas.journal_mode }} / {{ datos.base.pragmas.synchronous }} (2 = FULL)</td></tr>
+    <tr><th>foreign_keys / busy_timeout</th><td>{{ datos.base.pragmas.foreign_keys }} / {{ datos.base.pragmas.busy_timeout }} ms</td></tr>
+    <tr><th>Cola de tareas</th><td>{{ datos.cola }}</td></tr>
+    <tr><th>Elegibilidad</th><td>{{ datos.base.elegibilidad }}</td></tr>
+    <tr><th>Python / SQLite</th><td>{{ datos.entorno.python }} / {{ datos.entorno.sqlite }} · {{ datos.entorno.sistema }}</td></tr>
+    <tr><th>Programación</th><td>cada {{ datos.programacion.intervalo_horas }} h · próxima {{ datos.programacion.proxima }}
+        · tarea Windows {{ 'registrada' if datos.programacion.tarea_windows.registrada else 'no registrada' }}</td></tr>
+    <tr><th>IA</th><td>{{ 'lista' if datos.ia.listo else 'no disponible' }} · {{ datos.ia.motivo }}
+        · presupuesto USD {{ datos.ia.presupuesto.disponible_usd }} disponibles</td></tr>
+  </tbody>
+</table>
+
+<h2>Incidentes abiertos</h2>
+{% if abiertos %}
+<table style="margin-bottom:1.2rem">
+  <thead><tr><th>Fuente</th><th>Código</th><th>Mensaje</th><th>Desde</th><th></th></tr></thead>
+  <tbody>
+  {% for i in abiertos %}
+    <tr>
+      <td>{{ i.source_id or '—' }}</td><td>{{ i.codigo }}</td>
+      <td class="chico">{{ (i.mensaje or '')[:180] }}</td>
+      <td>{{ i.creado_en[:16] }}</td>
+      <td>
+        {% if i.source_id %}
+        <form method="post" action="/incidentes/resolver">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <input type="hidden" name="fuente" value="{{ i.source_id }}">
+          <button type="submit">Resolver</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="aviso bien">Sin incidentes abiertos.</p>
+{% endif %}
+
+<h2>Códigos observados</h2>
+{% if codigos %}
+<table style="margin-bottom:1.2rem">
+  <thead><tr><th>Código</th><th>Total</th><th>Abiertos</th><th>Qué significa</th></tr></thead>
+  <tbody>
+  {% for c in codigos %}
+    <tr><td>{{ c.codigo }}</td><td>{{ c.total }}</td><td>{{ c.abiertos }}</td>
+        <td class="chico">{{ c.descripcion }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="chico">Sin incidentes registrados: ninguna fuente falló todavía.</p>
+{% endif %}
+
+<h2>Historial de incidentes</h2>
+{% if historial %}
+<table>
+  <thead><tr><th>Cuándo</th><th>Fuente</th><th>Código</th><th>Mensaje</th><th>Resuelto</th></tr></thead>
+  <tbody>
+  {% for i in historial %}
+    <tr>
+      <td>{{ i.creado_en[:16] }}</td><td>{{ i.source_id or '—' }}</td><td>{{ i.codigo }}</td>
+      <td class="chico">{{ (i.mensaje or '')[:140] }}</td>
+      <td>{{ (i.resuelto_en or '—')[:16] }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="chico">Sin historial.</p>
+{% endif %}
+{% endblock %}

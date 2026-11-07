@@ -1,0 +1,16 @@
+{
+  "nota": "Tableros públicos verificados el 2026-11-06. Cada entrada respondió con vacantes reales. Los que devolvieron 404 (deel, automattic, supabase, remote, rappi, dlocal, uala, bitso, globant, mercadolibre) no se incluyen.",
+  "tableros": [
+    {"ats": "greenhouse", "org": "gitlab", "nombre": "GitLab", "activo": true},
+    {"ats": "greenhouse", "org": "canonical", "nombre": "Canonical", "activo": true},
+    {"ats": "greenhouse", "org": "vercel", "nombre": "Vercel", "activo": true},
+    {"ats": "greenhouse", "org": "datadog", "nombre": "Datadog", "activo": true},
+    {"ats": "lever", "org": "toptal", "nombre": "Toptal", "activo": true},
+    {"ats": "lever", "org": "despegar", "nombre": "Despegar (AR)", "activo": true},
+    {"ats": "lever", "org": "fintual", "nombre": "Fintual (CL)", "activo": true},
+    {"ats": "lever", "org": "kavak", "nombre": "Kavak (MX)", "activo": true},
+    {"ats": "ashby", "org": "linear", "nombre": "Linear", "activo": true},
+    {"ats": "ashby", "org": "ramp", "nombre": "Ramp", "activo": true},
+    {"ats": "ashby", "org": "nubank", "nombre": "Nubank (BR)", "activo": true}
+  ]
+}
