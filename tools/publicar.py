@@ -306,10 +306,58 @@ def verificar() -> int:
     return 0 if (bien and not hallazgos) else 1
 
 
+def publicar(mensaje: str, sin_push: bool = False) -> int:
+    """Publica cambios hechos en la copia: sanea, verifica, prueba y sube."""
+    if not mensaje.strip():
+        print("Falta el mensaje del commit (--mensaje).")
+        return 2
+    if not git("status", "--porcelain").strip():
+        print("No hay cambios que publicar.")
+        return 0
+
+    tocados = saneado.sanear(RAIZ_COPIA, publicables())
+    for ruta in tocados:
+        print(f"saneado: {ruta}")
+
+    hallazgos = saneado.verificar(RAIZ_COPIA, publicables())
+    if hallazgos:
+        print("Datos sensibles detectados; no se publica:")
+        for hallazgo in hallazgos[:20]:
+            print(f"  {hallazgo}")
+        return 2
+
+    print("Pruebas…")
+    bien, cola = correr_pruebas()
+    print(f"  {cola}")
+    if not bien:
+        print("Pruebas en rojo: el trabajo queda local, no se publica.")
+        return 3
+
+    git("add", "-A")
+    git("commit", "-q", "-m", mensaje)
+    publicado = git("rev-parse", "HEAD").strip()
+    print(f"Commit local: {publicado[:7]}  {mensaje.splitlines()[0]}")
+
+    if sin_push:
+        print("Push omitido (--sin-push).")
+        return 0
+
+    git("push", REMOTO, RAMA)
+    git("fetch", "-q", REMOTO)
+    remoto = git("rev-parse", f"{REMOTO}/{RAMA}").strip()
+    if remoto != publicado:
+        print(f"El remoto quedó en {remoto[:7]} y el local en {publicado[:7]}.")
+        return 4
+    print(f"Publicado en {REMOTO}/{RAMA} = {publicado[:7]}")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Publicación privada del buscador")
     parser.add_argument("accion", nargs="?", default="sincronizar",
-                        choices=["estado", "sincronizar", "verificar"])
+                        choices=["estado", "sincronizar", "verificar", "publicar"])
+    parser.add_argument("-m", "--mensaje", default="",
+                        help="mensaje de commit para la acción publicar")
     parser.add_argument("--sin-push", action="store_true")
     parser.add_argument("--sin-pruebas", action="store_true")
     args = parser.parse_args()
@@ -320,6 +368,8 @@ def main() -> int:
             return 0
         if args.accion == "verificar":
             return verificar()
+        if args.accion == "publicar":
+            return publicar(args.mensaje, sin_push=args.sin_push)
         return sincronizar(sin_push=args.sin_push, sin_pruebas=args.sin_pruebas)
     except RuntimeError as error:
         print(f"error: {error}")

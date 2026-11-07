@@ -145,6 +145,22 @@ archivo la aplicación funciona igual, con el perfil de ejemplo, y
 `python -m buscador perfil --real` se niega a pisar el perfil activo con datos
 de ejemplo.
 
+## Publicación privada
+
+Este repositorio es la copia publicable del proyecto: se publica en un repositorio
+**privado** de GitHub y se actualiza con una herramienta propia.
+
+```bat
+py -3 tools/publicar.py estado        :: qué hay en cada repositorio
+py -3 tools/publicar.py sincronizar   :: trae commits nuevos del proyecto original
+py -3 tools/publicar.py verificar     :: saneado + pruebas, sin publicar
+py -3 tools/publicar.py publicar -m "fix: ..."
+```
+
+`sincronizar` aplica el diff por archivo, sanea, corre las pruebas, commitea y
+hace push sin `--force`. Si un archivo de código no aplica limpio, no publica
+nada. Cada sincronización queda registrada en `docs/publicacion/estado.json`.
+
 ## Límites
 
 Presupuesto USD 0: sin llamadas de IA ni servicios pagos. El perfil activo es de
