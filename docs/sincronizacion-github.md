@@ -45,6 +45,13 @@ py -3 tools/publicar.py publicar -m "fix: ..."   :: cambios hechos en la copia
 `documents/`, `logs/`, `cache/`, `backups/`, `exports/`, `.env`,
 `config.local.*`, `perfil.local.json`, `.pytest_cache/`, `.workbuddy-ai/`.
 
+## Datos personales
+
+Lo que hay que borrar no está escrito en el código: vive en
+`tools/publicacion/local.json`, que **no se versiona** (`local.example.json` es la
+plantilla). Ahí van el usuario de Windows, el correo, el nombre, el equipo y las
+bandas salariales. Sin ese archivo el saneado sólo aplica las reglas genéricas.
+
 ## Credenciales
 
 Ninguna clave se guarda en el repositorio. La de Gemini vive en el Administrador
