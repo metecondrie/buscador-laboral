@@ -17,6 +17,8 @@ contiene las reglas.
 
 from __future__ import annotations
 
+import ast
+import hashlib
 import json
 import os
 import re
@@ -175,6 +177,121 @@ def _prohibidos(quien: dict) -> tuple[list[tuple[str, str]], list[tuple[str, str
     return contenido, rutas
 
 
+# --- Representación saneada en memoria --------------------------------------
+#
+# La sincronización compara el original con la copia en este mismo espacio:
+# misma normalización de saltos de línea, mismas sustituciones, misma huella
+# funcional. Un parche crudo nunca puede aplicar limpio sobre un archivo que ya
+# fue saneado (la copia tiene CRLF y texto anonimizado), pero la *representación*
+# saneada sí es comparable. Ninguna de estas funciones escribe en disco.
+
+
+def _normalizar_lineas(texto: str) -> str:
+    return texto.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _es_config_buscador(ruta: str) -> bool:
+    return ruta.replace("\\", "/").endswith("buscador/config.py")
+
+
+def sanear_texto(texto: str, ruta: str, quien: dict | None = None) -> str:
+    """Devuelve la representación saneada de un contenido, sin tocar el disco.
+
+    Es la única definición de «saneado»: `sanear()` la usa para los archivos y
+    `publicar.py` para comparar versiones del original. Así no hay dos
+    saneadores que puedan divergir.
+    """
+    q = quien if quien is not None else datos()
+    resultado = _normalizar_lineas(texto)
+    if _es_config_buscador(ruta):
+        resultado = _UA_PERSONAL.sub(_UA_SANEADO, resultado)
+    for viejo, nuevo in _sustituciones(q):
+        resultado = re.sub(viejo, lambda _, reemplazo=nuevo: reemplazo, resultado)
+    for viejo, nuevo in _codigo(q):
+        resultado = resultado.replace(viejo, nuevo)
+    return resultado
+
+
+def verificar_texto(texto: str, ruta: str, quien: dict | None = None) -> list[str]:
+    """Puerta de control sobre un contenido en memoria (mismas reglas que el árbol)."""
+    q = quien if quien is not None else datos()
+    contenido, _ = _prohibidos(q)
+    hallazgos = []
+    for numero, linea in enumerate(_normalizar_lineas(texto).splitlines(), 1):
+        for etiqueta, patron in contenido:
+            if re.search(patron, linea):
+                hallazgos.append(f"{etiqueta}: {ruta}:{numero}")
+    return hallazgos
+
+
+class _SinDocstrings(ast.NodeTransformer):
+    """Los docstrings y comentarios no cambian lo que el programa ejecuta."""
+
+    def _limpiar(self, nodo):
+        self.generic_visit(nodo)
+        cuerpo = getattr(nodo, "body", None)
+        if cuerpo and isinstance(cuerpo, list):
+            while cuerpo and isinstance(cuerpo[0], ast.Expr) \
+                    and isinstance(cuerpo[0].value, ast.Constant) \
+                    and isinstance(cuerpo[0].value.value, str):
+                cuerpo.pop(0)
+        return nodo
+
+    visit_Module = _limpiar
+    visit_ClassDef = _limpiar
+    visit_FunctionDef = _limpiar
+    visit_AsyncFunctionDef = _limpiar
+
+
+def huella_funcional(texto: str, ruta: str) -> str:
+    """Huella de lo ejecutable. Comentarios, docstrings y saltos no cuentan.
+
+    Permite distinguir «el saneador cambió una frase» de «cambió una función».
+    Si el Python no se puede parsear devuelve una huella inválida: la
+    sincronización la trata como conflicto en lugar de darla por buena.
+    """
+    limpio = _normalizar_lineas(texto)
+    if ruta.endswith(".py"):
+        try:
+            arbol = _SinDocstrings().visit(ast.parse(limpio))
+            return hashlib.sha256(ast.dump(arbol, include_attributes=False)
+                                  .encode("utf-8")).hexdigest()
+        except (SyntaxError, ValueError):
+            return "!no-parsea"
+    return hashlib.sha256(limpio.encode("utf-8")).hexdigest()
+
+
+def clasificar_cambio(base: str, head: str, ruta: str,
+                      quien: dict | None = None) -> dict:
+    """Compara dos versiones del original en representación saneada.
+
+    - `crudo_difiere`: cambió el archivo en el original.
+    - `saneado_difiere`: cambió lo que se publicaría.
+    - `funcional`: cambió lo que el código ejecuta (no sólo texto anónimo).
+    - `equivalente`: el cambio crudo desaparece al sanear y no es funcional;
+      no hay nada que aplicar, pero el archivo **sigue sincronizado**, no se
+      excluye de la copia.
+    """
+    q = quien if quien is not None else datos()
+    s_base = sanear_texto(base, ruta, q)
+    s_head = sanear_texto(head, ruta, q)
+    h_base = huella_funcional(s_base, ruta)
+    h_head = huella_funcional(s_head, ruta)
+    valida = not h_base.startswith("!") and not h_head.startswith("!")
+    funcional = (h_base != h_head) if valida else None
+    return {
+        "ruta": ruta,
+        "crudo_difiere": _normalizar_lineas(base) != _normalizar_lineas(head),
+        "saneado_base": s_base,
+        "saneado_head": s_head,
+        "saneado_difiere": s_base != s_head,
+        "funcional": funcional,
+        "valida": valida,
+        "equivalente": (base != head and s_base == s_head
+                        and funcional is False and valida),
+    }
+
+
 # --- Utilidades -------------------------------------------------------------
 
 
@@ -210,34 +327,30 @@ def archivos(raiz: Path) -> list[Path]:
 def sanear(raiz: Path, rutas: list[Path] | None = None) -> list[str]:
     """Aplica las sustituciones. Devuelve los archivos modificados."""
     quien = datos()
-    sustituciones = _sustituciones(quien)
-    codigo = _codigo(quien)
     tocados: list[str] = []
     for ruta in (rutas if rutas is not None else archivos(raiz)):
         if not ruta.is_file() or not _es_texto(ruta):
             continue
-        if _relativa(raiz, ruta) in EXENTOS:
+        relativa = _relativa(raiz, ruta)
+        if relativa in EXENTOS:
             continue
         original = _leer(ruta)
-        texto = original
-
-        if ruta.name == "config.py" and "buscador" in str(ruta):
-            texto = _UA_PERSONAL.sub(_UA_SANEADO, texto)
-
-        for viejo, nuevo in sustituciones:
-            texto = re.sub(viejo, lambda _, reemplazo=nuevo: reemplazo, texto)
-        for viejo, nuevo in codigo:
-            texto = texto.replace(viejo, nuevo)
-
+        texto = sanear_texto(original, relativa, quien)
+        # La comparación en memoria normaliza saltos, pero el archivo conserva
+        # su estilo: cambiar 133 archivos de CRLF a LF no aporta nada y ensucia
+        # el diff. `core.autocrlf=true` ya guarda LF en el índice.
+        if "\r\n" in original:
+            texto = texto.replace("\n", "\r\n")
         if texto != original:
             _escribir(ruta, texto)
-            tocados.append(_relativa(raiz, ruta))
+            tocados.append(relativa)
     return tocados
 
 
 def verificar(raiz: Path, rutas: list[Path] | None = None) -> list[str]:
     """Hallazgos que impiden publicar. Lista vacía = árbol limpio."""
-    contenido, prohibidas = _prohibidos(datos())
+    quien = datos()
+    _, prohibidas = _prohibidos(quien)
     candidatas = rutas if rutas is not None else [r for r in raiz.rglob("*") if r.is_file()]
     hallazgos: list[str] = []
     for ruta in candidatas:
@@ -248,8 +361,5 @@ def verificar(raiz: Path, rutas: list[Path] | None = None) -> list[str]:
                 break
         if not ruta.is_file() or not _es_texto(ruta) or relativa in EXENTOS:
             continue
-        for numero, linea in enumerate(_leer(ruta).splitlines(), 1):
-            for etiqueta, patron in contenido:
-                if re.search(patron, linea):
-                    hallazgos.append(f"{etiqueta}: {relativa}:{numero}")
+        hallazgos.extend(verificar_texto(_leer(ruta), relativa, quien))
     return hallazgos
