@@ -27,7 +27,12 @@ MODALIDADES = ("remote", "hybrid", "onsite", "unknown")
 
 
 def crear_app(token: str | None = None, csrf: str | None = None,
-              stop_token: str | None = None) -> FastAPI:
+              stop_token: str | None = None, autoreparar: bool = True) -> FastAPI:
+    """Aplicación web. `autoreparar=False` deja el arranque sin tocar la cola.
+
+    La autoreparación procesa la cola cuando el catálogo quedó vacío. Se puede
+    desactivar para inspeccionar ese estado tal cual (pruebas y diagnóstico).
+    """
     app = FastAPI(title="Buscador laboral", docs_url=None, redoc_url=None, openapi_url=None)
     app.state.token = token or secrets.token_urlsafe(32)
     app.state.csrf = csrf or secrets.token_urlsafe(24)
@@ -37,9 +42,11 @@ def crear_app(token: str | None = None, csrf: str | None = None,
     app.state.tareas = {
         "corrida": {"estado": "idle", "detalle": ""},
         "verificacion": {"estado": "idle", "detalle": ""},
+        "reclasificacion": {"estado": "idle", "detalle": ""},
     }
     app.state.candado = threading.Lock()
     app.state.hilo_corrida = None
+    app.state.hilo_reclasificacion = None
 
     app.mount("/static", StaticFiles(directory=str(ESTATICOS)), name="static")
 
@@ -565,7 +572,12 @@ def crear_app(token: str | None = None, csrf: str | None = None,
         with conn() as c:
             actual = worker.asegurar_perfil(c, config.rutas())["datos"]
             datos = _perfil_desde_formulario(formulario, actual)
-            worker.guardar_perfil(c, config.rutas(), datos, origen="manual")
+            # `procesar=False`: cambiar el perfil invalida todos los análisis y
+            # deja la reclasificación en cola. Procesarla acá bloquearía el
+            # request ~15 s con 1 000 ofertas, así que se lanza en segundo plano
+            # y la deuda queda pagada antes de que el usuario vuelva a mirar.
+            worker.guardar_perfil(c, config.rutas(), datos, origen="manual", procesar=False)
+        _reclasificar(app)
         return RedirectResponse("/config?guardado=perfil", status_code=303)
 
     @app.post("/programar")
@@ -677,17 +689,34 @@ def crear_app(token: str | None = None, csrf: str | None = None,
 
     # --- diagnóstico -----------------------------------------------------
     @app.get("/diagnostico", response_class=HTMLResponse)
-    def diagnostico(request: Request):
+    def diagnostico(request: Request, reclasificado: str = ""):
         with conn() as c:
             datos = diagnostics.resumen(c, config.rutas())
             abiertos = incidents.abiertos(c)
             codigos = incidents.resumen_codigos(c)
             historial_incidentes = incidents.historial(c, 40)
+            ultima = (_json_ajuste(db.ajuste(c, "ultima_reclasificacion", ""))
+                      if reclasificado else {})
         return templates.TemplateResponse(
             request, "diagnostico.html",
             contexto(request, titulo="Diagnóstico", datos=datos, abiertos=abiertos,
-                     codigos=codigos, historial=historial_incidentes),
+                     codigos=codigos, historial=historial_incidentes,
+                     reclasificacion=ultima,
+                     tarea_reclasificacion=app.state.tareas["reclasificacion"]),
         )
+
+    @app.post("/diagnostico/reclasificar")
+    def reclasificar_pendientes(request: Request, csrf: str = Form("")):
+        """Procesa la cola de clasificación sin tocar fuentes ni proveedores.
+
+        Va en segundo plano: con mil ofertas tarda ~15 s y bloquear el request
+        dejaría la interfaz congelada justo cuando el usuario quiere ver el
+        resultado.
+        """
+        if not csrf_ok(csrf):
+            return PlainTextResponse("CSRF inválido", status_code=400)
+        _reclasificar(app)
+        return RedirectResponse("/diagnostico?reclasificado=1", status_code=303)
 
     @app.post("/diagnostico/paquete")
     def paquete(request: Request, csrf: str = Form("")):
@@ -714,6 +743,46 @@ def crear_app(token: str | None = None, csrf: str | None = None,
         )
 
     # --- tareas en segundo plano ----------------------------------------
+    def _reclasificar(app_: FastAPI, segundo_plano: bool = True) -> dict:
+        """Procesa la cola de clasificación, por defecto en un hilo.
+
+        No consulta fuentes ni llama a proveedores: sólo aplica las reglas a lo
+        que ya está guardado. Es determinista, así que repetirla es inofensivo.
+        """
+        if not segundo_plano:
+            with conn() as c:
+                resultado = worker.reclasificar_faltantes(c)
+                db.guardar_ajuste(c, "ultima_reclasificacion",
+                                  json.dumps(resultado, ensure_ascii=False))
+            return resultado
+
+        with app_.state.candado:
+            actual = app_.state.tareas.get("reclasificacion", {"estado": "idle"})
+            if actual.get("estado") == "running":
+                return {"procesadas": 0, "omitido": "ya hay una reclasificación en curso"}
+            app_.state.tareas["reclasificacion"] = {"estado": "running",
+                                                    "detalle": "procesando la cola"}
+
+        def trabajo() -> None:
+            try:
+                with conn() as c:
+                    resultado = worker.reclasificar_faltantes(c)
+                    db.guardar_ajuste(c, "ultima_reclasificacion",
+                                      json.dumps(resultado, ensure_ascii=False))
+                detalle = (resultado["omitido"] if resultado.get("omitido")
+                           else f"{resultado['procesadas']} tareas en {resultado['duracion_ms']} ms")
+                estado = "omitido" if resultado.get("omitido") else "ok"
+            except Exception as exc:  # noqa: BLE001 - la interfaz no debe caer
+                resultado, estado, detalle = {"procesadas": 0}, "error", repr(exc)[:200]
+            with app_.state.candado:
+                app_.state.tareas["reclasificacion"] = {"estado": estado, "detalle": detalle,
+                                                        "resultado": resultado}
+
+        hilo = threading.Thread(target=trabajo, daemon=True, name="reclasificacion-ui")
+        app_.state.hilo_reclasificacion = hilo
+        hilo.start()
+        return {"procesadas": 0, "omitido": "en segundo plano"}
+
     def _lanzar_corrida(app_: FastAPI) -> dict:
         """Una corrida por vez. Devuelve `{iniciada, motivo, run_id}`.
 
@@ -792,12 +861,48 @@ def crear_app(token: str | None = None, csrf: str | None = None,
         threading.Thread(target=trabajo, daemon=True, name="verificacion-ui").start()
         return True
 
+    def _reparar_cola_al_arrancar() -> None:
+        """Arregla el catálogo vacío con cola pendiente sin esperar a una búsqueda.
+
+        Es el estado en el que quedó el incidente del 07/11: 1 280 tareas
+        encoladas por un cambio de perfil y ningún proceso que las tomara, porque
+        la clasificación sólo corría dentro de una corrida. Se dispara únicamente
+        en ese caso extremo (hay pendientes y **cero** análisis vigentes); una
+        cola chica se deja para la próxima corrida.
+        """
+        try:
+            with conn() as c:
+                datos = diagnostics.clasificacion(c)
+        except sqlite3.Error:
+            return
+        if datos["alerta"] != "sin_clasificaciones" and not datos["sin_analisis"]:
+            return
+        logs.registrar("autoreparacion_cola", pendientes=datos["pendientes"],
+                       ofertas=datos["ofertas"], analisis=datos["analisis_historicos"])
+        _reclasificar(app)
+
+    if autoreparar:
+        _reparar_cola_al_arrancar()
     return app
 
 
 def _perfil_desde_formulario(formulario, actual: dict) -> dict:
-    """Reconstruye el perfil desde el formulario sin perder claves desconocidas."""
+    """Reconstruye el perfil desde el formulario sin perder datos que no edita.
+
+    El formulario sólo expone unos pocos campos; el perfil guarda más cosas en
+    subdocumentos (`territorio.remoto_obligatorio`, `experiencia.empleos`,
+    `experiencia.proyectos`, `idioma.fuente`). Reemplazar el subdocumento entero
+    los borraba: guardar el perfil desde la interfaz degradaba el perfil sin
+    avisar y, como además invalida todos los análisis, el catálogo quedaba
+    recalculado con datos incompletos.
+    """
     datos = dict(actual)
+
+    def fusionar(clave: str, cambios: dict) -> dict:
+        """Actualiza el subdocumento conservando las claves que el form no toca."""
+        base = dict(datos.get(clave) or {})
+        base.update({k: v for k, v in cambios.items() if v is not None})
+        return base
 
     habilidades = []
     for linea in (formulario.get("habilidades") or "").splitlines():
@@ -807,24 +912,28 @@ def _perfil_desde_formulario(formulario, actual: dict) -> dict:
     if habilidades:
         datos["habilidades"] = habilidades
 
-    datos["idioma"] = {
-        "ingles": (formulario.get("ingles") or "B2").strip().upper(),
-        "espanol": "nativo",
-    }
+    ingles = (formulario.get("ingles") or "").strip()
+    datos["idioma"] = fusionar("idioma", {"ingles": ingles.upper() if ingles else None,
+                                          "espanol": "nativo"})
+    anios_crudo = formulario.get("anios")
     try:
-        anios = int(formulario.get("anios") or 0)
+        anios = int(anios_crudo) if anios_crudo not in (None, "") else None
     except ValueError:
-        anios = 0
-    datos["experiencia"] = {
-        "anios": anios,
-        "nivel": (formulario.get("nivel") or "junior").strip(),
-    }
-    presencial = [p.strip() for p in (formulario.get("presencial") or "").split(",") if p.strip()]
-    datos["territorio"] = {
-        "residencia": (formulario.get("residencia") or "Argentina").strip(),
-        "remoto": formulario.get("remoto") == "1",
-        "presencial": presencial,
-    }
+        anios = None
+    nivel = (formulario.get("nivel") or "").strip()
+    datos["experiencia"] = fusionar("experiencia", {"anios": anios, "nivel": nivel or None})
+
+    territorio = dict(datos.get("territorio") or {})
+    residencia = (formulario.get("residencia") or "").strip()
+    if residencia:
+        territorio["residencia"] = residencia
+    # El checkbox no envía nada cuando está desmarcado: su ausencia es el "no".
+    territorio["remoto"] = formulario.get("remoto") == "1"
+    if formulario.get("presencial") is not None:
+        territorio["presencial"] = [p.strip() for p in formulario.get("presencial").split(",")
+                                    if p.strip()]
+    datos["territorio"] = territorio
+
     categorias = formulario.getlist("categorias") if hasattr(formulario, "getlist") else []
     if categorias:
         datos["categorias"] = list(categorias)
@@ -838,10 +947,14 @@ def _perfil_desde_formulario(formulario, actual: dict) -> dict:
             except ValueError:
                 pass
     datos["salario"] = salario
-    datos["disponibilidad"] = {
-        "desde": (formulario.get("desde") or "inmediata").strip(),
-        "horas_semana": int(float(formulario.get("horas") or 40)),
-    }
+    try:
+        horas = int(float(formulario.get("horas") or 40))
+    except (TypeError, ValueError):
+        horas = None
+    datos["disponibilidad"] = fusionar("disponibilidad", {
+        "desde": (formulario.get("desde") or "").strip() or None,
+        "horas_semana": horas,
+    })
     datos["origen"] = "manual"
     datos["nota"] = "Perfil cargado desde la interfaz. Revisá que cada habilidad tenga evidencia."
     return datos

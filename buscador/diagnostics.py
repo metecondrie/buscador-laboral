@@ -14,6 +14,66 @@ from . import adapters, ai, backups, config, db, incidents, queue, scheduler
 
 SECRETOS = {"key", "token", "password", "secret", "api_key", "authorization"}
 
+# Etiquetas de la cola: `{'queued': 1280}` en pantalla no dice nada.
+ETIQUETAS_TAREA = {
+    "queued": "en cola", "deferred": "diferidas", "running": "en curso",
+    "completed": "completadas", "skipped": "descartadas", "failed": "fallidas",
+}
+
+
+def _miles(numero: int) -> str:
+    return f"{numero:,}".replace(",", " ")
+
+
+def clasificacion(conn: sqlite3.Connection) -> dict:
+    """Estado del catálogo clasificado, en números que se puedan leer.
+
+    Diagnóstico mostraba `{'queued': 1280}` y `{}` en crudo. Un `{}` en
+    elegibilidad es justamente lo que hay que ver como alarma, no como diccionario
+    vacío: significa que ningún análisis está vigente.
+    """
+    ofertas = conn.execute(
+        "SELECT COUNT(*) FROM jobs WHERE merged_into IS NULL").fetchone()[0]
+    analizadas = conn.execute(
+        "SELECT COUNT(DISTINCT job_id) FROM analyses WHERE obsoleto=0").fetchone()[0]
+    por_elegibilidad = {
+        fila["elegibilidad"]: fila["n"]
+        for fila in conn.execute(
+            "SELECT elegibilidad, COUNT(*) AS n FROM analyses WHERE obsoleto=0"
+            " GROUP BY elegibilidad"
+        ).fetchall()
+    }
+    tareas = queue.contar(conn)
+    pendientes = (tareas.get("queued", 0) + tareas.get("deferred", 0)
+                  + tareas.get("running", 0))
+    ultima = conn.execute(
+        "SELECT MAX(creado_en) AS marca FROM analyses WHERE obsoleto=0").fetchone()
+    perfil = conn.execute(
+        "SELECT version, origen, creado_en FROM profile_versions WHERE activo=1"
+        " ORDER BY id DESC LIMIT 1").fetchone()
+
+    return {
+        "ofertas": ofertas,
+        "analizadas": analizadas,
+        "sin_analisis": max(ofertas - analizadas, 0),
+        "pendientes": pendientes,
+        "elegibles": por_elegibilidad.get("eligible", 0),
+        "dudosas": por_elegibilidad.get("doubtful", 0),
+        "incompatibles": por_elegibilidad.get("incompatible", 0),
+        "analisis_historicos": conn.execute("SELECT COUNT(*) FROM analyses").fetchone()[0],
+        "tareas": dict(tareas),
+        "tareas_texto": " · ".join(
+            f"{_miles(n)} {ETIQUETAS_TAREA.get(estado, estado)}"
+            for estado, n in sorted(tareas.items(), key=lambda par: -par[1])
+        ) or "sin tareas",
+        "ultima_clasificacion": ultima["marca"] if ultima else None,
+        "perfil": dict(perfil) if perfil else None,
+        "reglas": config.RULES_VERSION,
+        # El catálogo vacío con cola pendiente es un fallo operativo, no un
+        # estado normal: la pantalla lo dice y ofrece arreglarlo.
+        "alerta": "sin_clasificaciones" if (pendientes and not analizadas) else "",
+    }
+
 
 def resumen(conn: sqlite3.Connection, rutas: config.Rutas | None = None) -> dict:
     rutas = rutas or config.rutas()
@@ -56,6 +116,7 @@ def resumen(conn: sqlite3.Connection, rutas: config.Rutas | None = None) -> dict
             "elegibilidad": elegibilidad,
             "ultima_corrida": ultima,
         },
+        "clasificacion": clasificacion(conn),
         "disco": {"libre_gb": round(espacio.free / 1024 ** 3, 1),
                   "total_gb": round(espacio.total / 1024 ** 3, 1)},
         "fuentes": incidents.salud_por_fuente(conn),

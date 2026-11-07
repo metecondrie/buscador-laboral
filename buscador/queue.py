@@ -8,19 +8,40 @@ from datetime import datetime, timedelta, timezone
 from . import config, db
 
 
-def encolar(conn: sqlite3.Connection, kind: str, unique_key: str, **campos) -> bool:
+def encolar(conn: sqlite3.Connection, kind: str, unique_key: str,
+            reencolar_si_completada: bool = False, **campos) -> bool:
+    """Encola una tarea.
+
+    Con `reencolar_si_completada` la tarea vuelve a la cola aunque ya exista como
+    `completed`. Hace falta cuando el resultado anterior se invalidó: sin eso, la
+    clave ya existe, el `INSERT` se ignora y el trabajo no se rehace nunca.
+    """
     ahora = config.ahora_utc()
     with db.transaccion(conn):
         cur = conn.execute(
-        """INSERT OR IGNORE INTO tasks (kind, unique_key, job_id, job_version_id, profile_version_id,
-               rules_version, estado, intentos, next_due, creado_en, actualizado_en)
-           VALUES (?,?,?,?,?,?, 'queued', 0, ?, ?, ?)""",
-        (
-            kind, unique_key, campos.get("job_id"), campos.get("job_version_id"),
-            campos.get("profile_version_id"), campos.get("rules_version", config.RULES_VERSION),
-            campos.get("next_due", ahora), ahora, ahora,
-        ),
-    )
+            """INSERT INTO tasks (kind, unique_key, job_id, job_version_id, profile_version_id,
+                   rules_version, estado, intentos, next_due, creado_en, actualizado_en)
+               VALUES (?,?,?,?,?,?, 'queued', 0, ?, ?, ?)
+               ON CONFLICT(unique_key) DO UPDATE SET
+                   estado='queued', intentos=0, next_due=excluded.next_due,
+                   locked_by_epoch=NULL, locked_at=NULL, error=NULL,
+                   actualizado_en=excluded.actualizado_en
+               WHERE tasks.estado='completed'""",
+            (
+                kind, unique_key, campos.get("job_id"), campos.get("job_version_id"),
+                campos.get("profile_version_id"), campos.get("rules_version", config.RULES_VERSION),
+                campos.get("next_due", ahora), ahora, ahora,
+            ),
+        ) if reencolar_si_completada else conn.execute(
+            """INSERT OR IGNORE INTO tasks (kind, unique_key, job_id, job_version_id, profile_version_id,
+                   rules_version, estado, intentos, next_due, creado_en, actualizado_en)
+               VALUES (?,?,?,?,?,?, 'queued', 0, ?, ?, ?)""",
+            (
+                kind, unique_key, campos.get("job_id"), campos.get("job_version_id"),
+                campos.get("profile_version_id"), campos.get("rules_version", config.RULES_VERSION),
+                campos.get("next_due", ahora), ahora, ahora,
+            ),
+        )
     return bool(cur.rowcount)
 
 
@@ -66,8 +87,39 @@ def fallar(conn: sqlite3.Connection, task_id: int, error: str, reintentar_en_seg
         )
 
 
-def recuperar_huerfanas(conn: sqlite3.Connection, epoch_actual: str) -> int:
-    """Devuelve a la cola las tareas de corridas abandonadas por caída."""
+def descartar_obsoletas(conn: sqlite3.Connection, profile_version_id: int,
+                       rules_version: str | None = None) -> int:
+    """Descarta tareas planeadas para un perfil o unas reglas que ya no rigen.
+
+    Sin esto, la cola de una versión anterior se procesa igual y escribe análisis
+    con un perfil inactivo: quedan como vigentes (`obsoleto=0`) aunque no
+    correspondan a nadie, y el catálogo muestra puntajes de un perfil que ya se
+    cambió. Las `running` no se tocan: las tiene otro trabajador.
+    """
+    from . import config as cfg
+
+    reglas = rules_version or cfg.RULES_VERSION
+    with db.transaccion(conn):
+        cur = conn.execute(
+            """UPDATE tasks SET estado='skipped', locked_by_epoch=NULL, locked_at=NULL,
+                   error=?, actualizado_en=?
+               WHERE estado IN ('queued','deferred')
+                 AND ((profile_version_id IS NOT NULL AND profile_version_id<>?)
+                      OR rules_version<>?)""",
+            ("planeada para un perfil o reglas anteriores", cfg.ahora_utc(),
+             profile_version_id, reglas),
+        )
+        descartadas = cur.rowcount
+    return descartadas
+
+
+def recuperar_tareas(conn: sqlite3.Connection, epoch_actual: str) -> int:
+    """Devuelve a la cola las tareas que quedaron `running` sin dueño.
+
+    Pasa cuando el proceso muere a mitad de una clasificación. Sin esto la tarea
+    queda `running` para siempre: nadie la reclama y la oferta nunca se clasifica,
+    aunque la cola parezca vacía.
+    """
     with db.transaccion(conn):
         cur = conn.execute(
             """UPDATE tasks SET estado='queued', locked_by_epoch=NULL, locked_at=NULL, actualizado_en=?
@@ -75,6 +127,12 @@ def recuperar_huerfanas(conn: sqlite3.Connection, epoch_actual: str) -> int:
             (config.ahora_utc(), epoch_actual),
         )
         recuperadas = cur.rowcount
+    return recuperadas
+
+
+def recuperar_huerfanas(conn: sqlite3.Connection, epoch_actual: str) -> int:
+    """Devuelve a la cola las tareas de corridas abandonadas por caída."""
+    recuperadas = recuperar_tareas(conn, epoch_actual)
     with db.transaccion(conn):
         conn.execute(
             "UPDATE runs SET estado='abandoned', finished_at=COALESCE(finished_at, ?) WHERE estado='running' AND run_epoch<>?",

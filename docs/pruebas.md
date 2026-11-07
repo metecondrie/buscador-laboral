@@ -8,7 +8,7 @@ Estados: **superada**, **parcial**, **simulada**, **no ejecutada**.
 ## Automáticas
 
 Comando: `.venv\Scripts\python.exe -m pytest tests -q`
-Resultado: **228 superadas**, 1 advertencia de Starlette sobre `httpx` (no afecta).
+Resultado: **248 superadas**, 1 advertencia de Starlette sobre `httpx` (no afecta).
 Evidencia: `docs/evidencia/pytest.txt`.
 
 | Archivo | Qué cubre | Pruebas |
@@ -22,6 +22,7 @@ Evidencia: `docs/evidencia/pytest.txt`.
 | `test_adapters.py` | fixtures F01–F03, errores tipados, dominio no aprobado, destino privado | 10 |
 | `test_adapters_nuevos.py` | fixtures F04–F11, salario en texto, entidades HTML, metadatos | 13 |
 | `test_esquema.py` | versión, migraciones idempotentes, ajustes, rechazo de base futura, PRAGMAs, PRAGMA de cada migración, reparación de cuota de la v8 | 7 |
+| `test_reclasificacion.py` | el formulario no degrada el perfil, guardar procesa la cola, deuda diferida y su reparación, cambio de reglas con historial conservado, descarte de tareas de perfil/reglas anteriores, recuperación de tareas colgadas, la cola no se toca con una corrida en curso, búsqueda sin tareas abandonadas, Diagnóstico con números, botón de reclasificar y autoreparación al arrancar | 16 |
 | `test_busqueda_manual.py` | progreso por fuente desde la base, avance y clasificación incremental antes del final, resumen final, fallo parcial, cancelación que conserva el trabajo, botón y panel en Ofertas, `/progreso.json` con y sin sesión, recuperación tras recargar, una sola corrida por doble pulsación y por base, corrida colgada, CSRF, redirección abierta, IA informada sin tocar credenciales, contrato JS/plantilla | 20 |
 | `test_identidad.py` | deduplicación, cambio material, vínculo entre fuentes, reclamo atómico, entidades | 9 |
 | `test_duplicados.py` | similitud, sugerencia, fusión aceptada y revertida, rechazo, misma fuente | 7 |
@@ -47,8 +48,9 @@ clave del sistema.
 | Respaldo y restauración sobre la base real | Respaldo verificado, `integrity_check` ok |
 | Paquete de diagnóstico | ZIP con 6 archivos, sin claves |
 | Interfaz | 10 páginas renderizadas en proceso (ASGI) y todas las acciones POST verificadas |
-| Servidor real por socket | **ejecutada** con `tools/verificar_interfaz.py`: uvicorn real y HTTP real en el mismo proceso (el entorno bloquea loopback entre procesos). 27/27 en modo rápido (cancela la corrida) y **30/30 con `--buscar`**, que lanza una búsqueda real completa: botón, panel, JS servido, `/progreso.json`, arranque, doble pulsación sin duplicar, 12 estados de progreso distintos, cancelación en vuelo, resumen final y progreso recuperado tras recargar. Evidencia en `docs/evidencia/interfaz.txt` |
+| Servidor real por socket | **ejecutada** con `tools/verificar_interfaz.py`: uvicorn real y HTTP real en el mismo proceso (el entorno bloquea loopback entre procesos). 34/34 en modo rápido (cancela la corrida) y **37/37 con `--buscar`**, que lanza una búsqueda real completa: botón, panel, JS servido, `/progreso.json`, arranque, doble pulsación sin duplicar, 12 estados de progreso distintos, cancelación en vuelo, resumen final y progreso recuperado tras recargar. Evidencia en `docs/evidencia/interfaz.txt` |
 | Búsqueda manual real | **ejecutada**: 14/14 fuentes, 24–28 s, 825 observaciones revisadas, 60 nuevas, 0 duplicadas nuevas, 11 candidatas en el catálogo |
+| Reparación de la cola (07/11) | **ejecutada sobre la base real**: 1 280 procesadas, 1 280 descartadas por ser de un perfil superado, 29,6 s; 3 696 análisis históricos conservados. Informe en `docs/incidente-cola-clasificacion.md` |
 | **Generación real sobre una oferta** | **superada**: `gemini-3.5-flash-lite`, 1 969 + 480 tokens, 4 citas verificadas, 0 inventadas, **USD 0**. Evidencia en `docs/evidencia/ia-oferta-real.txt` |
 | **Segunda corrida sobre la misma oferta** | **superada**: la caché respondió sin petición nueva (`cache / cache`, USD 0) |
 
@@ -64,6 +66,7 @@ clave del sistema.
 | P06 Duplicados | **superada** | Identificador fuerte, URL canónica, vínculo débil, sugerencias con reversión. |
 | P07 Elegibilidad | **parcial** | Casos US-only/LATAM, título obligatorio, seniority, salario ausente y excepción por competencias. Falta etiquetado humano de 25. |
 | P08 Ranking | **no ejecutada** | Requiere las 25 revisiones humanas. |
+| P18 Reclasificación | **superada** | Drenaje determinista sin red, deuda diferida reparable, descarte de cola obsoleta, autoreparación al arrancar y 16 pruebas de regresión. |
 | P17 Búsqueda manual | **superada** | Botón, progreso persistido, incremental, cancelación, concurrencia y recuperación probados; verificada por socket real con búsqueda de verdad. |
 | P09 Interés | **superada** | Guardar, interesar, descartar y deshacer; repetición idempotente; persiste tras reinicio. |
 | P10 Avisos | **parcial** | Un aviso por oferta, sin duplicados. Escritorio opcional no verificado de punta a punta. |

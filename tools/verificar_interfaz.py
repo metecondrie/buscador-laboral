@@ -29,7 +29,7 @@ sys.path.insert(0, str(RAIZ))
 
 import uvicorn  # noqa: E402
 
-from buscador import config, db, ingest, worker  # noqa: E402
+from buscador import config, db, diagnostics, ingest, worker  # noqa: E402
 from buscador.web import crear_app  # noqa: E402
 
 _argumentos = [a for a in sys.argv[1:] if not a.startswith("--")]
@@ -119,6 +119,48 @@ def main() -> int:
                 anotar("Configuración muestra el diagnóstico",
                        'data-diagnostico="1"' in html, "")
                 anotar("La página no expone la clave", "AIza" not in html, "")
+
+            # --- diagnóstico: clasificación en números ---------------------
+            with abridor.open(f"{base}/diagnostico", timeout=10) as r:
+                html = r.read().decode("utf-8", errors="replace")
+            anotar("Diagnóstico muestra el bloque de clasificación",
+                   "Analizadas (vigentes)" in html
+                   and "Elegibles / dudosas / incompatibles" in html, "")
+            anotar("Diagnóstico no muestra diccionarios en crudo",
+                   "{&#39;queued&#39;" not in html and "Elegibilidad</th><td>{}" not in html, "")
+            anotar("Diagnóstico ofrece reclasificar",
+                   "/diagnostico/reclasificar" in html, "")
+            with abridor.open(f"{base}/progreso.json", timeout=10) as r:
+                estado = json.loads(r.read().decode("utf-8"))
+            anotar("El catálogo tiene análisis vigentes",
+                   (estado["ofertas"]["elegibles"] + estado["ofertas"]["dudosas"]
+                    + estado["ofertas"]["incompatibles"]) > 0,
+                   f"{estado['ofertas']['elegibles']} elegibles · "
+                   f"{estado['ofertas']['dudosas']} dudosas · "
+                   f"{estado['ofertas']['incompatibles']} incompatibles")
+
+            # Invariante del incidente: ninguna oferta sin clasificar y nada en cola.
+            conexion = db.conectar(rutas.db)
+            try:
+                foto = diagnostics.clasificacion(conexion)
+            finally:
+                conexion.close()
+            anotar("Todas las ofertas están clasificadas",
+                   foto["sin_analisis"] == 0,
+                   f"{foto['analizadas']}/{foto['ofertas']} · {foto['pendientes']} pendientes")
+
+            # Reclasificar sin pendientes debe ser inofensivo (idempotente).
+            datos_recl = urllib.parse.urlencode({"csrf": csrf.group(1)}).encode()
+            with abridor.open(f"{base}/diagnostico/reclasificar", data=datos_recl,
+                              timeout=30) as r:
+                anotar("POST /diagnostico/reclasificar", r.status == 200, str(r.status))
+            time.sleep(1.0)
+            with abridor.open(f"{base}/progreso.json", timeout=10) as r:
+                tras = json.loads(r.read().decode("utf-8"))
+            anotar("Reclasificar no altera el catálogo si la cola está vacía",
+                   (tras["ofertas"]["elegibles"] + tras["ofertas"]["dudosas"])
+                   == (estado["ofertas"]["elegibles"] + estado["ofertas"]["dudosas"]),
+                   "sin cambios")
 
             # Acciones que no tocan credenciales reales: guardar configuración y
             # verificar modelos (consulta sólo el catálogo del proveedor).

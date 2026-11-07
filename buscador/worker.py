@@ -127,8 +127,19 @@ def asegurar_perfil(conn: sqlite3.Connection, rutas: config.Rutas) -> dict:
 
 
 def guardar_perfil(conn: sqlite3.Connection, rutas: config.Rutas, datos: dict,
-                   origen: str = "manual") -> dict:
-    """Persiste el perfil, crea una versión nueva y fuerza la reclasificación."""
+                   origen: str = "manual", procesar: bool = True) -> dict:
+    """Persiste el perfil, crea una versión nueva y fuerza la reclasificación.
+
+    Cambiar el perfil invalida **todos** los análisis: los puntajes dependen de
+    él. Por eso se marcan obsoletos y se reencola todo.
+
+    `procesar=True` paga esa deuda en el acto. Si un llamador lo desactiva —la
+    interfaz, para no bloquear el request— queda obligado a drenar la cola por su
+    cuenta; si no lo hace, el catálogo queda vacío y la aplicación muestra cero
+    clasificaciones vigentes aunque la cola esté llena. Ese fue el incidente del
+    07/11: perfiles v3 guardados desde la web, 1 280 tareas encoladas y nada que
+    las procesara.
+    """
     datos = dict(datos)
     datos["version"] = f"perfil-{config.ahora_utc().replace(':', '').replace('-', '')}"
     datos["origen"] = origen
@@ -140,7 +151,83 @@ def guardar_perfil(conn: sqlite3.Connection, rutas: config.Rutas, datos: dict,
         conn.execute("UPDATE analyses SET obsoleto=1")
     encoladas = reclasificar_todo(conn, perfil["id"])
     perfil["encoladas"] = encoladas
+    perfil["reclasificacion"] = procesar_pendientes(conn) if procesar else {"procesadas": 0,
+                                                                          "omitido": "diferida"}
     return perfil
+
+
+def reclasificar_faltantes(conn: sqlite3.Connection, maximo: int = 20000) -> dict:
+    """Encola y clasifica las ofertas que quedaron sin análisis vigente.
+
+    Cierra el hueco entre «no hay tareas pendientes» y «hay ofertas sin
+    clasificar»: puede haber ofertas cuya tarea se completó y cuyo análisis se
+    invalidó después sin que nadie lo reemplazara.
+    """
+    faltantes = [
+        fila["id"] for fila in conn.execute(
+            """SELECT j.id FROM jobs j
+               WHERE j.merged_into IS NULL
+                 AND NOT EXISTS (SELECT 1 FROM analyses a
+                                  WHERE a.job_id=j.id AND a.obsoleto=0)""").fetchall()
+    ]
+    encoladas = 0
+    perfil = asegurar_perfil(conn, config.rutas())
+    for job_id in faltantes:
+        version = ingest._asegurar_version(conn, job_id)
+        clave = f"clasificar:{job_id}:{version}:{perfil['id']}:{config.RULES_VERSION}"
+        if queue.encolar(conn, "clasificar", clave, reencolar_si_completada=True,
+                         job_id=job_id, job_version_id=version,
+                         profile_version_id=perfil["id"]):
+            encoladas += 1
+    resultado = procesar_pendientes(conn, maximo=maximo)
+    resultado["faltantes"] = len(faltantes)
+    resultado["encoladas_ahora"] = encoladas
+    if faltantes:
+        logs.registrar("faltantes_encoladas", faltantes=len(faltantes), encoladas=encoladas)
+    return resultado
+
+
+def procesar_pendientes(conn: sqlite3.Connection, maximo: int = 20000,
+                        usar_mutex: bool = True) -> dict:
+    """Drena la cola de clasificación: determinista, sin red y sin IA.
+
+    No consulta fuentes, no llama a ningún proveedor y no gasta cuota: sólo aplica
+    las reglas a las ofertas que ya están guardadas. Es la operación que faltaba
+    cuando la cola quedaba encolada por un cambio de perfil o de reglas.
+
+    Si hay una corrida en curso no hace nada: esa corrida drena la cola al
+    terminar, y dos escritores sobre las mismas tareas se pisarían.
+    """
+    antes = queue.contar(conn)
+    pendientes = antes.get("queued", 0) + antes.get("deferred", 0) + antes.get("running", 0)
+    if not pendientes:
+        return {"procesadas": 0, "recuperadas": 0, "antes": antes, "despues": antes,
+                "omitido": "", "duracion_ms": 0.0}
+
+    mutex = Mutex(config.rutas().lock) if usar_mutex else None
+    if mutex is not None and not mutex.adquirir():
+        return {"procesadas": 0, "recuperadas": 0, "antes": antes, "despues": antes,
+                "omitido": "hay una corrida en curso", "duracion_ms": 0.0}
+    try:
+        epoch = uuid.uuid4().hex
+        recuperadas = queue.recuperar_tareas(conn, epoch)
+        perfil = asegurar_perfil(conn, config.rutas())
+        # La cola puede traer trabajo planeado para un perfil anterior: procesarlo
+        # escribiría análisis de un perfil que ya no está activo.
+        descartadas = queue.descartar_obsoletas(conn, perfil["id"])
+        inicio = time.perf_counter()
+        procesadas = procesar_tareas(conn, epoch, maximo=maximo, perfil=perfil)
+        duracion = round((time.perf_counter() - inicio) * 1000, 1)
+        despues = queue.contar(conn)
+        logs.registrar("cola_procesada", procesadas=procesadas, recuperadas=recuperadas,
+                       descartadas=descartadas, antes=antes, despues=despues,
+                       duracion_ms=duracion)
+        return {"procesadas": procesadas, "recuperadas": recuperadas,
+                "descartadas": descartadas, "antes": antes, "despues": despues,
+                "omitido": "", "duracion_ms": duracion}
+    finally:
+        if mutex is not None:
+            mutex.liberar()
 
 
 def reclasificar_todo(conn: sqlite3.Connection, profile_version_id: int) -> int:
@@ -153,7 +240,9 @@ def reclasificar_todo(conn: sqlite3.Connection, profile_version_id: int) -> int:
         ahora = config.ahora_utc()
         with db.transaccion(conn):
             # Reencolar siempre: una tarea ya completada con la misma clave debe
-            # volver a la cola, o la reclasificación no haría nada.
+            # volver a la cola, o la reclasificación no haría nada. Salvo que la
+            # esté ejecutando otro: robarle la tarea dejaría dos escritores sobre
+            # la misma oferta.
             cur = conn.execute(
                 """INSERT INTO tasks (kind, unique_key, job_id, job_version_id, profile_version_id,
                        rules_version, estado, intentos, next_due, creado_en, actualizado_en)
@@ -161,7 +250,8 @@ def reclasificar_todo(conn: sqlite3.Connection, profile_version_id: int) -> int:
                    ON CONFLICT(unique_key) DO UPDATE SET
                        estado='queued', intentos=0, next_due=excluded.next_due,
                        locked_by_epoch=NULL, locked_at=NULL, error=NULL,
-                       actualizado_en=excluded.actualizado_en""",
+                       actualizado_en=excluded.actualizado_en
+                   WHERE estado <> 'running'""",
                 (clave, fila["id"], job_version_id, profile_version_id, config.RULES_VERSION,
                  ahora, ahora, ahora),
             )
@@ -220,6 +310,7 @@ def correr(causa: str = "manual", limite: int | None = None,
         ingest.sembrar_fuentes(conn)
         ingest.sanear_textos(conn)
         resincronizadas = sincronizar_reglas(conn, perfil["id"])
+        descartadas = queue.descartar_obsoletas(conn, perfil["id"])
         epoch = uuid.uuid4().hex
         run_id = ingest.abrir_corrida(conn, causa, epoch)
         recuperadas = queue.recuperar_huerfanas(conn, epoch)
@@ -616,6 +707,16 @@ def clasificar(conn: sqlite3.Connection, tarea: dict, perfil: dict,
                 config.ahora_utc(), 1 if evaluacion.excepcion else 0,
                 evaluacion.confianza, evaluacion.motivo_elegibilidad, run_id,
             ),
+        )
+        # Una oferta, un análisis vigente. La clave única incluye `job_version_id`,
+        # así que dos versiones del mismo aviso dejaban dos filas vigentes: la
+        # oferta aparecía duplicada en las listas y los contadores sumaban de más.
+        conn.execute(
+            """UPDATE analyses SET obsoleto=1
+               WHERE job_id=? AND obsoleto=0
+                 AND NOT (job_version_id=? AND profile_version_id=? AND rules_version=?)""",
+            (job["id"], tarea["job_version_id"], tarea["profile_version_id"],
+             config.RULES_VERSION),
         )
         conn.execute(
             "UPDATE jobs SET categoria=?, estado_vigencia=?, modalidad=? WHERE id=?",

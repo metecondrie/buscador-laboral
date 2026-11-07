@@ -400,10 +400,23 @@ def _encolar_clasificacion(conn: sqlite3.Connection, job_id: str, profile_versio
     job_version_id = _asegurar_version(conn, job_id)
     clave = f"clasificar:{job_id}:{job_version_id}:{profile_version_id}:{config.RULES_VERSION}"
     ahora = config.ahora_utc()
+    # `INSERT OR IGNORE` a secas dejaba ofertas sin clasificar para siempre: si la
+    # tarea ya estaba `completed` y una captura posterior invalidaba el análisis,
+    # no se reencolaba nada y la oferta quedaba sin análisis vigente y sin
+    # trabajo pendiente. Ahora se resucita la tarea completada, pero sólo cuando
+    # la oferta realmente perdió su análisis vigente: una captura sin cambios no
+    # dispara trabajo de más.
     cur = conn.execute(
-        """INSERT OR IGNORE INTO tasks (kind, unique_key, job_id, job_version_id, profile_version_id,
+        """INSERT INTO tasks (kind, unique_key, job_id, job_version_id, profile_version_id,
                rules_version, estado, intentos, next_due, creado_en, actualizado_en)
-           VALUES ('clasificar', ?, ?, ?, ?, ?, 'queued', 0, ?, ?, ?)""",
+           VALUES ('clasificar', ?, ?, ?, ?, ?, 'queued', 0, ?, ?, ?)
+           ON CONFLICT(unique_key) DO UPDATE SET
+               estado='queued', intentos=0, next_due=excluded.next_due,
+               locked_by_epoch=NULL, locked_at=NULL, error=NULL,
+               actualizado_en=excluded.actualizado_en
+           WHERE tasks.estado='completed'
+             AND NOT EXISTS (SELECT 1 FROM analyses x
+                              WHERE x.job_id=tasks.job_id AND x.obsoleto=0)""",
         (clave, job_id, job_version_id, profile_version_id, config.RULES_VERSION, ahora, ahora, ahora),
     )
     if cur.rowcount:

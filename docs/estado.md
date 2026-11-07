@@ -1,7 +1,7 @@
 # Estado del proyecto
 
-Fecha: 07/11/2026. Actualizado tras la sesión de búsqueda manual con progreso en
-vivo.
+Fecha: 07/11/2026. Actualizado tras la auditoría y reparación de la cola de
+clasificación.
 Commit de referencia: `git log -1 --oneline`.
 
 **No declaro el MVP terminado**: el ranking ya no miente, pero la calidad real de
@@ -28,10 +28,10 @@ El perfil anterior sigue guardado como versión y se puede reactivar.
 
 | Métrica | Antes (rules-1.1 + perfil demo) | Ahora (rules-2.0 + perfil real) |
 | --- | --- | --- |
-| Ofertas evaluadas | 882 | 1 229 |
+| Ofertas evaluadas | 882 | 1 299 |
 | Elegibles | 3 | 3 |
 | Dudosas | 31 | 8 |
-| Incompatibles | 848 | 1 218 |
+| Incompatibles | 848 | 1 288 |
 | Dejaron de ser relevantes | — | 24 |
 | Pasaron a relevantes | — | 2 |
 
@@ -84,8 +84,8 @@ Una generación real sobre una oferta real se ejecutó con costo **USD 0**:
 
 ## 5. Pruebas
 
-228 superadas. `docs/evidencia/pytest.txt`. 30 comprobaciones de interfaz sobre
-socket real, con una búsqueda real completa
+248 superadas. `docs/evidencia/pytest.txt`. 34 comprobaciones de interfaz sobre
+socket real en modo rápido y 37 con una búsqueda real completa
 (`tools/verificar_interfaz.py --buscar`): `docs/evidencia/interfaz.txt`.
 
 ## 4 bis. Búsqueda manual con progreso
@@ -114,6 +114,10 @@ Diseño y justificación de la consulta periódica (en lugar de SSE) en
 | El resumen decía «1 candidata» habiendo 10 | `candidatas` es el catálogo; el delta es `candidatas_nuevas` |
 | Dos corridas en el mismo segundo se robaban análisis | `analyses.run_id` (v10) en lugar de comparar marcas de tiempo |
 | Se veía `completed` con el resumen sin escribir | El resumen se guarda antes de cerrar la corrida |
+| Cambiar el perfil dejaba el catálogo vacío con 1 280 tareas en cola | `procesar_pendientes`, drenaje en hilo, botón en Diagnóstico y autoreparación al arrancar |
+| Guardar el perfil desde la interfaz borraba `remoto_obligatorio`, empleos y proyectos | El formulario fusiona subdocumentos en lugar de reemplazarlos |
+| Tareas de un perfil anterior escribían análisis vigentes ajenos | `queue.descartar_obsoletas` las marca `skipped` |
+| Diagnóstico mostraba `{'queued': 1280}` y `{}` en crudo | Bloque de clasificación con números y etiquetas |
 | La variable de entorno tapaba la clave buena | Prioridad almacén primero + huella activa |
 | DPAPI buscaba `CryptProtectData` en `advapi32` | Se movió a `crypt32.dll` |
 | La caché de IA serializaba un objeto Pydantic | Se guarda `model_dump()` y se revalida al leer |

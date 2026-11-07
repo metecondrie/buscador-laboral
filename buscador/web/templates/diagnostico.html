@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block contenido %}
+{% if tarea_reclasificacion and tarea_reclasificacion.estado == 'running' %}
+<meta http-equiv="refresh" content="3">
+{% endif %}
 <h1>Diagnóstico</h1>
 <p class="sub">Estado real del sistema, salud por fuente e incidentes. El paquete exportable no incluye claves ni
   contenido completo de ofertas.</p>
@@ -15,10 +18,37 @@
   <div class="kpi"><b>{{ datos.disco.libre_gb }} GB</b><small>libres de {{ datos.disco.total_gb }} GB</small></div>
 </div>
 
+{% if tarea_reclasificacion and tarea_reclasificacion.estado == 'running' %}
+<div class="aviso">Reclasificando: {{ tarea_reclasificacion.detalle }}. La página se actualiza sola.</div>
+{% elif reclasificacion %}
+<div class="aviso {{ 'bien' if reclasificacion.procesadas else 'alerta' }}">
+  Reclasificación: {{ reclasificacion.procesadas }} tarea(s) procesadas
+  {% if reclasificacion.duracion_ms %} en {{ reclasificacion.duracion_ms }} ms{% endif %}
+  {% if reclasificacion.recuperadas %} · {{ reclasificacion.recuperadas }} recuperadas{% endif %}
+  {% if reclasificacion.omitido %} · {{ reclasificacion.omitido }}{% endif %}.
+</div>
+{% endif %}
+
+{% if datos.clasificacion.alerta == 'sin_clasificaciones' %}
+<div class="aviso alerta" style="margin-bottom:1rem">
+  <strong>Ningún análisis vigente y {{ datos.clasificacion.pendientes }} tarea(s) en cola.</strong>
+  El catálogo está clasificado pero marcado como obsoleto: probablemente un cambio de perfil
+  o de reglas encoló la reclasificación y nada la procesó.
+  Usá <em>Reclasificar pendientes</em> para resolverlo; no hace falta buscar de nuevo ni
+  consultar ninguna fuente.
+</div>
+{% endif %}
+
 <div class="barra">
   <form method="post" action="/diagnostico/paquete">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <button class="primario" type="submit">Generar paquete de diagnóstico</button>
+  </form>
+  <form method="post" action="/diagnostico/reclasificar">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit" {% if not datos.clasificacion.pendientes %}disabled{% endif %}>
+      Reclasificar pendientes ({{ datos.clasificacion.pendientes }})
+    </button>
   </form>
   <form method="post" action="/incidentes/resolver">
     <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -27,13 +57,34 @@
   <a href="/fuentes"><button type="button">Ver fuentes</button></a>
 </div>
 
+<h2>Clasificación</h2>
+<table style="margin-bottom:1.2rem">
+  <tbody>
+    <tr><th>Ofertas guardadas</th><td>{{ datos.clasificacion.ofertas }}</td></tr>
+    <tr><th>Analizadas (vigentes)</th><td>{{ datos.clasificacion.analizadas }}
+        {% if datos.clasificacion.sin_analisis %} · faltan {{ datos.clasificacion.sin_analisis }}{% endif %}</td></tr>
+    <tr><th>Pendientes en cola</th><td>{{ datos.clasificacion.pendientes }}
+        <span class="chico">{{ datos.clasificacion.tareas_texto }}</span></td></tr>
+    <tr><th>Elegibles / dudosas / incompatibles</th>
+        <td>{{ datos.clasificacion.elegibles }} / {{ datos.clasificacion.dudosas }} /
+            {{ datos.clasificacion.incompatibles }}</td></tr>
+    <tr><th>Análisis históricos</th><td>{{ datos.clasificacion.analisis_historicos }}
+        <span class="chico">versiones anteriores conservadas</span></td></tr>
+    <tr><th>Perfil activo</th><td>
+        {% if datos.clasificacion.perfil %}
+          {{ datos.clasificacion.perfil.version }} · {{ datos.clasificacion.perfil.origen }}
+          · {{ datos.clasificacion.perfil.creado_en[:16] }}
+        {% else %}sin perfil{% endif %}
+        · reglas {{ datos.clasificacion.reglas }}</td></tr>
+    <tr><th>Última clasificación</th><td>{{ datos.clasificacion.ultima_clasificacion or '—' }}</td></tr>
+  </tbody>
+</table>
+
 <h2>Estado de la base</h2>
 <table style="margin-bottom:1.2rem">
   <tbody>
     <tr><th>journal_mode / synchronous</th><td>{{ datos.base.pragmas.journal_mode }} / {{ datos.base.pragmas.synchronous }} (2 = FULL)</td></tr>
     <tr><th>foreign_keys / busy_timeout</th><td>{{ datos.base.pragmas.foreign_keys }} / {{ datos.base.pragmas.busy_timeout }} ms</td></tr>
-    <tr><th>Cola de tareas</th><td>{{ datos.cola }}</td></tr>
-    <tr><th>Elegibilidad</th><td>{{ datos.base.elegibilidad }}</td></tr>
     <tr><th>Python / SQLite</th><td>{{ datos.entorno.python }} / {{ datos.entorno.sqlite }} · {{ datos.entorno.sistema }}</td></tr>
     <tr><th>Programación</th><td>cada {{ datos.programacion.intervalo_horas }} h · próxima {{ datos.programacion.proxima }}
         · tarea Windows {{ 'registrada' if datos.programacion.tarea_windows.registrada else 'no registrada' }}</td></tr>

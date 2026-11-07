@@ -3,8 +3,8 @@
 Documento de traspaso. Cualquier sesión (Astra, DeepSeek o quien siga) debe poder
 retomar el trabajo leyendo sólo esto y `docs/estado.md`.
 
-- **Última actualización:** 07/11/2026, sesión de búsqueda manual con progreso en
-  vivo.
+- **Última actualización:** 07/11/2026, auditoría y reparación de la cola de
+  clasificación.
 - **Rama:** `main`. `h1-paralelo` se conserva intacta.
 - **Commit de referencia:** ver `git log -1 --oneline`.
 - **Estado:** el buscador funciona y **ya no sobrevalora** ofertas. Sobre 1 280
@@ -83,6 +83,29 @@ negativos) se calculan solas. Las respuestas sobreviven a cualquier
 reclasificación. También por consola: `buscador validacion` y
 `buscador validacion --exportar docs/muestra-validacion.csv`.
 
+### Cola de clasificación: la deuda se paga (incidente 07/11)
+
+Guardar el perfil desde la interfaz invalidaba todos los análisis y encolaba una
+reclasificación completa que **nadie procesaba**: no hay trabajador permanente, la
+clasificación sólo corría dentro de una búsqueda. El catálogo quedó vacío
+(`Elegibilidad: {}`) con 1 280 tareas en cola. Informe completo en
+`docs/incidente-cola-clasificacion.md`.
+
+Lo que cambió, y hay que respetarlo:
+
+- `worker.procesar_pendientes()` drena la cola **sin red y sin IA**: es
+  determinista y se puede repetir. Toma el mutex del trabajador y no hace nada si
+  hay una corrida en curso.
+- `guardar_perfil(..., procesar=True)` paga la deuda por defecto. Diferirla es
+  ahora una decisión explícita del llamador.
+- La interfaz la lanza en un hilo (≈15 s con 1 000 ofertas) y ofrece
+  **Diagnóstico → Reclasificar pendientes**.
+- Al arrancar, si hay pendientes y **cero** análisis vigentes, se repara solo.
+- `queue.descartar_obsoletas()` impide que tareas de un perfil o unas reglas
+  anteriores escriban análisis vigentes que no corresponden a nadie.
+- El formulario de perfil **fusiona** subdocumentos: ya no borra
+  `territorio.remoto_obligatorio`, `experiencia.empleos` ni `experiencia.proyectos`.
+
 ### Búsqueda manual con progreso (nuevo)
 
 Botón **Buscar ahora** en Ofertas: lanza la corrida existente y muestra el avance
@@ -132,6 +155,8 @@ en `docs/ia-proveedores.md`.
 ### Verificado con datos reales
 
 - Migración de esquema v1 → v10 sobre la base real, sin pérdida.
+- Reparación del 07/11: 1 280 tareas procesadas y 1 280 descartadas en 29,6 s;
+  3 696 análisis históricos conservados y 1 decisión de usuario intacta.
 - 14 fuentes respondiendo `success` en la última corrida (24 s, 825 observaciones
   revisadas, 60 nuevas).
 - Antes/después reproducible con `tools/comparar_reglas.py`: 24 falsos positivos
@@ -220,6 +245,7 @@ en `docs/ia-proveedores.md`.
 | `tools/prueba_ia_oferta.py` | una oferta real con cuota gratuita y tope de gasto |
 | `tools/verificar_interfaz.py` | verificación HTTP real; `--buscar` lanza una búsqueda |
 | `docs/busqueda-manual.md` | diseño del progreso en vivo y por qué no SSE |
+| `docs/incidente-cola-clasificacion.md` | auditoría de la cola detenida y su reparación |
 
 ## 9. Convenciones
 

@@ -12,7 +12,7 @@ aprobador de etapa es el usuario; la revisión independiente sigue pendiente.
 | R05 fuentes | `adapters/` | P02 | **Cubierto con salvedad** | 14 fuentes; sólo 4 aportan ofertas postulables hoy. 10 aportan 0 |
 | R06 contrato de rastreo | `adapters/base.py` | P02, P04 | **Cubierto** | Particiones, errores tipados, metadatos auditables |
 | R07 identidad/historial | `ingest.py`, `merge.py` | P06, P09, P14 | **Cubierto** | Fusión sugerida y reversible; alias de empresa pendientes |
-| R08 diagnóstico | `incidents.py`, `diagnostics.py` | P04 | **Cubierto** | Bandeja de incidentes, salud por fuente, paquete exportable |
+| R08 diagnóstico | `incidents.py`, `diagnostics.py` | P04, P18 | **Cubierto** | Bandeja de incidentes, salud por fuente, paquete exportable y bloque de clasificación con ofertas analizadas, pendientes y elegibilidad |
 | R09 ranking explicado | `rules.py` | P07, P08 | **Parcial** | Tres dimensiones visibles y 24 falsos positivos corregidos; falta que marques los 25 veredictos |
 | R10 salarios | `ingest.py` | P07 | **Parcial** | Solo dato publicado; investigación salarial es H4 |
 | R11 IA controlada | `ai/` | P11, P12 | **Cubierto** (una oferta) | Cascada gratuita, credenciales del sistema, cuotas, caché, diagnóstico tipado y consumo discriminado; una generación real a USD 0. Falta el lote masivo |
@@ -40,6 +40,7 @@ aprobador de etapa es el usuario; la revisión independiente sigue pendiente.
 | Verificación de fuentes | `docs/evidencia/fuentes-verificacion.json` |
 | Pruebas | `docs/evidencia/pytest.txt` |
 | Búsqueda manual (diseño y alternativa descartada) | `docs/busqueda-manual.md` |
+| Incidente de la cola de clasificación | `docs/incidente-cola-clasificacion.md` |
 | Interfaz por socket real | `docs/evidencia/interfaz.txt` |
 | Prueba de IA sobre una oferta real | `docs/evidencia/ia-oferta-real.txt` |
 | Estado operativo | `docs/estado.md` |

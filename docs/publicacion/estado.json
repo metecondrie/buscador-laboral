@@ -1,5 +1,5 @@
 {
-  "base_original": "bb0ec9c35af4579621bc5659d63b9b2b4227127c",
+  "base_original": "78a9d7a4009bfaccbae92b9cdfeaf194f9b2af6a",
   "publicaciones": [
     {
       "original_desde": "",
@@ -9,6 +9,36 @@
       ],
       "nota": "import inicial de la copia saneada",
       "cuando": "2026-11-07T04:13:17+00:00"
+    },
+    {
+      "original_hasta": "78a9d7a4009bfaccbae92b9cdfeaf194f9b2af6a",
+      "original_desde": "bb0ec9c35af4579621bc5659d63b9b2b4227127c",
+      "commits": [
+        "78a9d7a fix(clasificación): la reclasificación se paga y el catálogo no queda vacío"
+      ],
+      "archivos": {
+        "aplicados": [
+          "buscador/diagnostics.py",
+          "buscador/ingest.py",
+          "buscador/queue.py",
+          "buscador/web.py",
+          "buscador/web/templates/diagnostico.html",
+          "buscador/worker.py",
+          "docs/CONTINUIDAD.md",
+          "docs/estado.md",
+          "docs/evidencia/interfaz.txt",
+          "docs/incidente-cola-clasificacion.md",
+          "docs/pruebas.md",
+          "docs/trazabilidad.md",
+          "tests/test_reclasificacion.py",
+          "tools/verificar_interfaz.py"
+        ],
+        "reemplazados": [
+          "docs/evidencia/pytest.txt"
+        ],
+        "omitidos": []
+      },
+      "cuando": "2026-11-07T04:36:38+00:00"
     }
   ]
 }
