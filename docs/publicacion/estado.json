@@ -1,0 +1,14 @@
+{
+  "base_original": "bb0ec9c35af4579621bc5659d63b9b2b4227127c",
+  "publicaciones": [
+    {
+      "original_desde": "",
+      "original_hasta": "bb0ec9c35af4579621bc5659d63b9b2b4227127c",
+      "commits": [
+        "bb0ec9c feat(ui): búsqueda manual con progreso real, sin duplicar corridas"
+      ],
+      "nota": "import inicial de la copia saneada",
+      "cuando": "2026-11-07T04:13:17+00:00"
+    }
+  ]
+}
