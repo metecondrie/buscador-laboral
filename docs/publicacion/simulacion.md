@@ -102,8 +102,8 @@ Controles:
   270/270 pruebas.
 
 La simulación no modificó el repositorio real: el registro sigue en `78a9d7a`,
-el HEAD sigue en `f90e2f3`, el árbol quedó limpio y la raíz activa se restauró
-al salir.
+el HEAD de la copia no cambió durante la simulación, el árbol quedó limpio y la
+raíz activa se restauró al salir.
 
 ## 4. Pruebas de regresión agregadas
 
