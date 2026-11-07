@@ -19,6 +19,7 @@ exports/
 .env
 config.local.*
 perfil.local.json
+tools/publicacion/local.json
 *.local.json
 
 # Artefactos de compilación

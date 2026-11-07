@@ -9,13 +9,18 @@ Este módulo concentra dos responsabilidades:
 2. `verificar()` — puerta de control. Devuelve la lista de hallazgos; si no está
    vacía, no se publica.
 
-Los patrones se arman por concatenación y este archivo queda excluido de ambos
-pasos: es el que contiene las reglas, no un archivo a sanear.
+Los valores personales **no están escritos acá**: se leen de
+`tools/publicacion/local.json` (excluido por `.gitignore`) o se derivan del
+entorno. Este archivo se excluye a sí mismo del saneado y de la auditoría porque
+contiene las reglas.
 """
 
 from __future__ import annotations
 
+import json
+import os
 import re
+import subprocess
 from pathlib import Path
 
 EXTENSIONES_TEXTO = {
@@ -24,52 +29,106 @@ EXTENSIONES_TEXTO = {
 }
 
 #: Contiene las reglas por definición: ni se sanea ni se audita a sí mismo.
-EXENTOS = {"tools/publicacion/saneado.py"}
+EXENTOS = {"tools/publicacion/saneado.py",
+           "tools/publicacion/local.json"}
 
-# --- Datos personales: se reemplazan por marcadores -------------------------
+LOCAL = Path(__file__).with_name("local.json")
 
-_SUSTITUCIONES: list[tuple[str, str]] = [
-    # Rutas del equipo.
-    (r"C:\\Users\\alele\\WorkBuddy AI\\buscad0r", "<RUTA_DEL_PROYECTO>"),
-    (r"C:/Users/alele/WorkBuddy AI/buscad0r", "<RUTA_DEL_PROYECTO>"),
-    (r"C:\\Users\\alele\\AppData\\Local\\Programs\\Python\\Python314",
-     "%LOCALAPPDATA%\\Programs\\Python\\Python314"),
-    (r"C:\\Users\\alele\\AppData", "%LOCALAPPDATA%"),
-    (r"C:\\Users\\alele", "<RUTA_DEL_USUARIO>"),
-    (r"C:/Users/alele", "<RUTA_DEL_USUARIO>"),
-    # Equipo y correo.
-    (r"\bDESKTOP-[A-Z0-9]{7}\b", "<equipo-local>"),
-    (r"alejoongaro" + r"@gmail\.com", "correo@ejemplo"),
-    # Nombre propio y carpetas de memoria personal.
-    (r"\bMemoria-Alejo\b", "la memoria personal"),
-    (r"\bAlejo\b", "el usuario"),
-    (r"\balejo\b", "el usuario"),
-    # Motivo de la restricción de modalidad (dato de salud).
-    (r"condici[oó]n de salud que impide el traslado( regular)?",
-     "restricción declarada que exige remoto"),
-    (r"condici[oó]n de salud", "restricción declarada"),
-    (r"virtual obligatorio por salud", "remoto obligatorio por restricción declarada"),
-    (r"por salud", "por una restricción declarada"),
-]
 
-# --- Reemplazos de código que dependen del perfil saneado -------------------
+# --- Datos personales del entorno -------------------------------------------
 
-_CODIGO: list[tuple[str, str]] = [
-    # El perfil real dejó de ser una constante del repositorio.
-    ("PERFIL_REAL", "PERFIL_EJEMPLO"),
-    ("perfil_mod.perfil()", "perfil_mod.perfil(rutas)"),
-    # Bandas salariales: se cargan en el perfil local.
-    ('"ars_neto_referencia": 750000', '"ars_neto_referencia": None'),
-    ('"ars_neto_objetivo": 900000', '"ars_neto_objetivo": None'),
-    ('"usd_hora_freelance": 10,', '"usd_hora_freelance": None,'),
-    # Valores de formulario: sin bandas personales por defecto.
-    ('if datos_perfil.salario else 750000', "if datos_perfil.salario else ''"),
-    ('if datos_perfil.salario else 900000', "if datos_perfil.salario else ''"),
-    ('if datos_perfil.salario else 10', "if datos_perfil.salario else ''"),
-    ('"ars_referencia": "750000"', '"ars_referencia": "100000"'),
-    ('"ars_objetivo": "900000"', '"ars_objetivo": "200000"'),
-    ('"usd_hora": "10"', '"usd_hora": "5"'),
-]
+
+def _correo_git() -> str:
+    try:
+        salida = subprocess.run(["git", "config", "--global", "user.email"],
+                                capture_output=True, text=True).stdout.strip()
+        return salida
+    except OSError:
+        return ""
+
+
+def datos() -> dict:
+    """Valores a borrar: primero local.json, después el entorno."""
+    crudo: dict = {}
+    try:
+        if LOCAL.exists():
+            leido = json.loads(LOCAL.read_text(encoding="utf-8"))
+            if isinstance(leido, dict):
+                crudo = leido
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        crudo = {}
+    return {
+        "usuario": str(crudo.get("usuario") or os.environ.get("USERNAME")
+                       or Path.home().name or ""),
+        "correo": str(crudo.get("correo") or _correo_git()),
+        "nombre": str(crudo.get("nombre") or ""),
+        "equipo": str(crudo.get("equipo") or ""),
+        "bandas": crudo.get("bandas") or {},
+    }
+
+
+def _sustituciones(quien: dict) -> list[tuple[str, str]]:
+    reglas: list[tuple[str, str]] = [
+        (r"C:\\Users\\" + r"[^\\\"]+", "%USERPROFILE%"),
+        (r"C:/Users/" + r"[^/\"]+", "%USERPROFILE%"),
+        (r"\bDESKTOP-[A-Z0-9]{7}\b", "<equipo-local>"),
+    ]
+    if quien["usuario"]:
+        # Rutas del equipo, con y sin la carpeta del usuario.
+        reglas.insert(0, (re.escape(f"C:\\Users\\{quien['usuario']}\\AppData\\Local\\Programs"
+                                    f"\\Python\\Python314"),
+                          "%LOCALAPPDATA%\\Programs\\Python\\Python314"))
+        reglas.insert(1, (re.escape(f"C:\\Users\\{quien['usuario']}"), "<RUTA_DEL_USUARIO>"))
+        reglas.insert(2, (re.escape(f"C:/Users/{quien['usuario']}"), "<RUTA_DEL_USUARIO>"))
+    if quien["correo"]:
+        reglas.append((re.escape(quien["correo"]), "correo@ejemplo"))
+    if quien["equipo"]:
+        reglas.append((re.escape(quien["equipo"]), "<equipo-local>"))
+    if quien["nombre"]:
+        reglas += [
+            (rf"\bMemoria-{re.escape(quien['nombre'])}\b", "la memoria personal"),
+            (rf"\b{re.escape(quien['nombre'])}\b", "el usuario"),
+        ]
+    reglas += [
+        (r"condici[oó]n de salud que impide el traslado( regular)?",
+         "restricción declarada que exige remoto"),
+        (r"condici[oó]n de salud", "restricción declarada"),
+        (r"virtual obligatorio por salud", "remoto obligatorio por restricción declarada"),
+        (r"por salud", "por una restricción declarada"),
+    ]
+    return reglas
+
+
+def _codigo(quien: dict) -> list[tuple[str, str]]:
+    bandas = quien["bandas"] or {}
+    reglas = [
+        # El perfil real dejó de ser una constante del repositorio.
+        ("PERFIL_REAL", "PERFIL_EJEMPLO"),
+        ("perfil_mod.perfil()", "perfil_mod.perfil(rutas)"),
+    ]
+    referencia = bandas.get("ars_referencia")
+    objetivo = bandas.get("ars_objetivo")
+    hora = bandas.get("usd_hora")
+    if referencia:
+        reglas += [
+            (f'"ars_neto_referencia": {referencia}', '"ars_neto_referencia": None'),
+            (f'if datos_perfil.salario else {referencia}', "if datos_perfil.salario else ''"),
+            (f'"ars_referencia": "{referencia}"', '"ars_referencia": "100000"'),
+        ]
+    if objetivo:
+        reglas += [
+            (f'"ars_neto_objetivo": {objetivo}', '"ars_neto_objetivo": None'),
+            (f'if datos_perfil.salario else {objetivo}', "if datos_perfil.salario else ''"),
+            (f'"ars_objetivo": "{objetivo}"', '"ars_objetivo": "200000"'),
+        ]
+    if hora:
+        reglas += [
+            (f'"usd_hora_freelance": {hora},', '"usd_hora_freelance": None,'),
+            (f'if datos_perfil.salario else {hora}', "if datos_perfil.salario else ''"),
+            (f'"usd_hora": "{hora}"', '"usd_hora": "5"'),
+        ]
+    return reglas
+
 
 _UA_PERSONAL = re.compile(
     r'USER_AGENT = "BuscadorLaboral/0\.2 \(prototipo local; contacto: [^"]*\)"'
@@ -84,31 +143,39 @@ _UA_SANEADO = (
     'USER_AGENT += ")"'
 )
 
-# --- Patrones prohibidos en la copia publicable -----------------------------
 
-_PROHIBIDOS_CONTENIDO: list[tuple[str, str]] = [
-    ("clave de Google", "AIza" + r"[0-9A-Za-z_-]{30,}"),
-    ("clave tipo OpenAI", r"(?<![A-Za-z0-9])sk-[A-Za-z0-9]{20,}"),
-    ("token de GitHub", "gh" + r"p_[A-Za-z0-9]{20,}"),
-    ("token fine-grained", "github" + r"_pat_[A-Za-z0-9_]{20,}"),
-    ("clave privada", "BEGIN [A-Z ]*" + r"PRIVATE KEY"),
-    ("correo personal", "alejoongaro" + r"@gmail\.com"),
-    ("cualquier gmail", r"[A-Za-z0-9._%+-]+" + r"@gmail\.com"),
-    ("ruta del equipo", r"C:\\Users\\" + r"alele"),
-    ("nombre de equipo", r"DESKTOP-" + r"[A-Z0-9]{7}"),
-    ("nombre propio", r"\b" + "Alejo" + r"\b"),
-    ("carpeta de memoria personal", "Memoria" + r"-Alejo"),
-    ("dato de salud", r"condici[oó]n de " + r"salud"),
-    ("banda salarial ARS", '"ars_neto_referencia": ' + r"\d"),
-    ("URL con credenciales", r"https://[^/\s]+:[^/\s]+@"),
-]
+def _prohibidos(quien: dict) -> tuple[list[tuple[str, str]], list[tuple[str, str]]]:
+    contenido = [
+        ("clave de Google", "AIza" + r"[0-9A-Za-z_-]{30,}"),
+        ("clave tipo OpenAI", r"(?<![A-Za-z0-9])sk-[A-Za-z0-9]{20,}"),
+        ("token de GitHub", "gh" + r"p_[A-Za-z0-9]{20,}"),
+        ("token fine-grained", "github" + r"_pat_[A-Za-z0-9_]{20,}"),
+        ("clave privada", "BEGIN [A-Z ]*" + r"PRIVATE KEY"),
+        ("cualquier gmail", r"[A-Za-z0-9._%+-]+" + r"@gmail\.com"),
+        ("nombre de equipo", "DESKTOP-" + r"[A-Z0-9]{7}"),
+        ("dato de salud", r"condici[oó]n de " + r"salud"),
+        ("banda salarial ARS", '"ars_neto_referencia": ' + r"\d"),
+        ("URL con credenciales", r"https://[^/\s]+:[^/\s]+@"),
+    ]
+    if quien["usuario"]:
+        contenido.append(("ruta del equipo", re.escape(f"C:\\Users\\{quien['usuario']}")))
+    if quien["correo"]:
+        contenido.append(("correo personal", re.escape(quien["correo"])))
+    if quien["nombre"]:
+        contenido += [
+            ("nombre propio", rf"\b{re.escape(quien['nombre'])}\b"),
+            ("carpeta de memoria personal", f"Memoria-{re.escape(quien['nombre'])}"),
+        ]
+    rutas = [
+        ("base SQLite", r"\.(db|sqlite3|db-wal|db-shm)$"),
+        ("archivo .env", r"(^|/)\.env$"),
+        ("perfil local", r"perfil\.local\.json$"),
+        ("volcado de logs", r"(^|/)logs?/|\.log$"),
+    ]
+    return contenido, rutas
 
-_PROHIBIDOS_RUTA: list[tuple[str, str]] = [
-    ("base SQLite", r"\.(db|sqlite3|db-wal|db-shm)$"),
-    ("archivo .env", r"(^|/)\.env$"),
-    ("perfil local", r"perfil\.local\.json$"),
-    ("volcado de logs", r"(^|/)logs?/|\.log$"),
-]
+
+# --- Utilidades -------------------------------------------------------------
 
 
 def _es_texto(ruta: Path) -> bool:
@@ -142,6 +209,9 @@ def archivos(raiz: Path) -> list[Path]:
 
 def sanear(raiz: Path, rutas: list[Path] | None = None) -> list[str]:
     """Aplica las sustituciones. Devuelve los archivos modificados."""
+    quien = datos()
+    sustituciones = _sustituciones(quien)
+    codigo = _codigo(quien)
     tocados: list[str] = []
     for ruta in (rutas if rutas is not None else archivos(raiz)):
         if not ruta.is_file() or not _es_texto(ruta):
@@ -154,9 +224,9 @@ def sanear(raiz: Path, rutas: list[Path] | None = None) -> list[str]:
         if ruta.name == "config.py" and "buscador" in str(ruta):
             texto = _UA_PERSONAL.sub(_UA_SANEADO, texto)
 
-        for viejo, nuevo in _SUSTITUCIONES:
+        for viejo, nuevo in sustituciones:
             texto = re.sub(viejo, lambda _, reemplazo=nuevo: reemplazo, texto)
-        for viejo, nuevo in _CODIGO:
+        for viejo, nuevo in codigo:
             texto = texto.replace(viejo, nuevo)
 
         if texto != original:
@@ -167,17 +237,19 @@ def sanear(raiz: Path, rutas: list[Path] | None = None) -> list[str]:
 
 def verificar(raiz: Path, rutas: list[Path] | None = None) -> list[str]:
     """Hallazgos que impiden publicar. Lista vacía = árbol limpio."""
+    contenido, prohibidas = _prohibidos(datos())
+    candidatas = rutas if rutas is not None else [r for r in raiz.rglob("*") if r.is_file()]
     hallazgos: list[str] = []
-    for ruta in (rutas if rutas is not None else archivos(raiz)):
+    for ruta in candidatas:
         relativa = _relativa(raiz, ruta)
-        for etiqueta, patron in _PROHIBIDOS_RUTA:
+        for etiqueta, patron in prohibidas:
             if re.search(patron, "/" + relativa):
                 hallazgos.append(f"{etiqueta}: {relativa}")
                 break
         if not ruta.is_file() or not _es_texto(ruta) or relativa in EXENTOS:
             continue
         for numero, linea in enumerate(_leer(ruta).splitlines(), 1):
-            for etiqueta, patron in _PROHIBIDOS_CONTENIDO:
+            for etiqueta, patron in contenido:
                 if re.search(patron, linea):
                     hallazgos.append(f"{etiqueta}: {relativa}:{numero}")
     return hallazgos

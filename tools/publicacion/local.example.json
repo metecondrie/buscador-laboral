@@ -1,0 +1,12 @@
+{
+  "_nota": "Copiar como local.json. Ese archivo NO se versiona.",
+  "usuario": "<usuario de Windows>",
+  "correo": "<correo a borrar>",
+  "nombre": "<nombre propio a borrar>",
+  "equipo": "<hostname a borrar>",
+  "bandas": {
+    "ars_referencia": 0,
+    "ars_objetivo": 0,
+    "usd_hora": 0
+  }
+}
