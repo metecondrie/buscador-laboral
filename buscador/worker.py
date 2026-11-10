@@ -14,6 +14,12 @@ from . import (adapters, config, db, ingest, incidents, logs, merge, notify, per
 from .adapters.base import ResultadoFuente
 from .textutil import hash_semantico
 
+#: Códigos de error que no mejoran reintentando: el recurso no existe (404) o
+#: está vedado (403). Un timeout o un 5xx NO está acá: eso se reintenta.
+_CODIGOS_TERMINALES = {"access_restricted"}
+#: Corridas consecutivas con error terminal para abrir el circuito de la fuente.
+_CORRIDAS_PARA_CIRCUITO = 2
+
 PERFIL_DEMO = {  # sólo para pruebas y demostración
     
     "version": "perfil-demo-1",
@@ -278,6 +284,27 @@ def sincronizar_reglas(conn: sqlite3.Connection, profile_version_id: int) -> int
     return encoladas
 
 
+def _circuito_abierto(conn: sqlite3.Connection, source_id: str) -> bool:
+    """F05/C5: ¿la fuente viene fallando de forma terminal?
+
+    Un 404 o un 403 (`access_restricted`) no se arregla reintentando: el recurso
+    dejó de existir o exige credenciales. Después de dos corridas consecutivas
+    con ese código se omite la consulta, se registra el motivo y se conserva todo
+    el histórico. La fuente no se borra: se reactiva desde Fuentes cuando el
+    editor vuelva a publicar.
+    """
+    filas = conn.execute(
+        """SELECT estado, error_code FROM source_runs
+           WHERE source_id=? AND finished_at IS NOT NULL
+           ORDER BY id DESC LIMIT ?""",
+        (source_id, _CORRIDAS_PARA_CIRCUITO),
+    ).fetchall()
+    if len(filas) < _CORRIDAS_PARA_CIRCUITO:
+        return False
+    return all((fila["error_code"] or fila["estado"] or "") in _CODIGOS_TERMINALES
+               for fila in filas)
+
+
 def correr(causa: str = "manual", limite: int | None = None,
            fuentes: list[str] | None = None, usar_mutex: bool = True) -> dict:
     """Una corrida completa: fuentes, ingesta, clasificación y avisos.
@@ -334,17 +361,31 @@ def correr(causa: str = "manual", limite: int | None = None,
             progreso.latido(conn, run_id)
             adaptador = adapters.obtener(sid)
             t0 = time.perf_counter()
-            try:
-                resultado = recolectar(adaptador, limite)
-            except Exception as exc:  # noqa: BLE001 - una fuente no debe tumbar la corrida
+            if _circuito_abierto(conn, sid):
+                # La fuente ya falló de forma terminal dos veces: no se vuelve a
+                # consultar en esta corrida. No se borra nada del histórico.
                 resultado = ResultadoFuente(
-                    source_id=sid, estado="network_error", error_code="network_error",
-                    error_msg=f"excepción no controlada: {exc!r}",
+                    source_id=sid, estado="circuito_abierto",
+                    error_code="circuito_abierto",
+                    error_msg=("se omite la consulta: las últimas corridas fallaron con "
+                               "error terminal (404/403); reactivar desde Fuentes cuando "
+                               "el editor vuelva a publicar"),
                 )
+            else:
+                try:
+                    resultado = recolectar(adaptador, limite)
+                except Exception as exc:  # noqa: BLE001 - una fuente no debe tumbar la corrida
+                    resultado = ResultadoFuente(
+                        source_id=sid, estado="network_error", error_code="network_error",
+                        error_msg=f"excepción no controlada: {exc!r}",
+                    )
             stats = ingest.ingestar(conn, resultado, perfil["id"])
             ingest.cerrar_source_run(conn, sr_id, resultado, stats["nuevas"],
                                      stats["actualizadas"], resultado.cursor_nuevo)
-            if not resultado.ok:
+            if resultado.estado == "circuito_abierto":
+                # El incidente original sigue abierto: no se duplica por corrida.
+                pass
+            elif not resultado.ok:
                 incidents.registrar(conn, sid, resultado.error_code or resultado.estado,
                                     resultado.error_msg, run_id)
             elif resultado.estado in {"success", "empty_valid"}:

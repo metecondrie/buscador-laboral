@@ -1,16 +1,25 @@
 {
-  "nota": "Tableros públicos verificados el 2026-11-06. Cada entrada respondió con vacantes reales. Los que devolvieron 404 (deel, automattic, supabase, remote, rappi, dlocal, uala, bitso, globant, mercadolibre) no se incluyen.",
+  "nota": "Tableros públicos verificados el 2026-11-10 con una sonda por endpoint (HTTP + cantidad de vacantes). Cada entrada respondió 200 y devolvió al menos una vacante real. Los slugs que devolvieron 404 en Greenhouse, Lever o Ashby no se incluyen: un tablero inexistente falla en cada corrida y ensucia las métricas de la fuente.",
+  "verificado_en": "2026-11-10",
   "tableros": [
     {"ats": "greenhouse", "org": "gitlab", "nombre": "GitLab", "activo": true},
     {"ats": "greenhouse", "org": "canonical", "nombre": "Canonical", "activo": true},
     {"ats": "greenhouse", "org": "vercel", "nombre": "Vercel", "activo": true},
     {"ats": "greenhouse", "org": "datadog", "nombre": "Datadog", "activo": true},
+    {"ats": "greenhouse", "org": "gofasti", "nombre": "GoFasti (LATAM)", "activo": true},
+    {"ats": "greenhouse", "org": "precisionmedicinegroup", "nombre": "Precision Medicine Group", "activo": true},
     {"ats": "lever", "org": "toptal", "nombre": "Toptal", "activo": true},
     {"ats": "lever", "org": "despegar", "nombre": "Despegar (AR)", "activo": true},
     {"ats": "lever", "org": "fintual", "nombre": "Fintual (CL)", "activo": true},
     {"ats": "lever", "org": "kavak", "nombre": "Kavak (MX)", "activo": true},
+    {"ats": "lever", "org": "getwingapp", "nombre": "Wing Assistant", "activo": true},
+    {"ats": "lever", "org": "bluelightconsulting", "nombre": "BlueLight Consulting", "activo": true},
     {"ats": "ashby", "org": "linear", "nombre": "Linear", "activo": true},
     {"ats": "ashby", "org": "ramp", "nombre": "Ramp", "activo": true},
-    {"ats": "ashby", "org": "nubank", "nombre": "Nubank (BR)", "activo": true}
+    {"ats": "ashby", "org": "nubank", "nombre": "Nubank (BR)", "activo": true},
+    {"ats": "ashby", "org": "aghanim", "nombre": "Aghanim", "activo": true},
+    {"ats": "ashby", "org": "maple", "nombre": "Maple", "activo": true},
+    {"ats": "ashby", "org": "whippy", "nombre": "Whippy", "activo": true},
+    {"ats": "ashby", "org": "atlas-assistants", "nombre": "Atlas Assistants", "activo": true}
   ]
 }

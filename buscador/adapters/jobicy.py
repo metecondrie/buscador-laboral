@@ -27,9 +27,15 @@ class Jobicy(Adaptador):
     frecuencia = "feed mutable; una solicitud por partición"
     parser_version = "jobicy-1.1.0"
     dominios = DOMINIOS
-    # La API acepta `industry` y `tag`. Las etiquetas devuelven lotes más
+    # La API acepta `industry`, `tag` y `geo`. Las etiquetas devuelven lotes más
     # cercanos al perfil que el listado general (medido, no supuesto).
+    #
+    # F04: `geo=latam` está verificado contra el endpoint el 2026-11-10 — la
+    # respuesta devuelve `appliedFilters: {"geo": "latam"}` y todos los avisos
+    # declaran LATAM en `jobGeo`. Se usa UNA partición geográfica, no una por
+    # categoría, para no multiplicar solicitudes sobre el mismo feed.
     particiones = (
+        Particion("latam", "LATAM", {"geo": "latam"}),
         Particion("soporte", "Atención al cliente", {"tag": "customer support"}),
         Particion("analista", "Analista", {"tag": "analyst"}),
         Particion("reportes", "Reportes", {"tag": "reporting analyst"}),
