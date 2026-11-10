@@ -245,7 +245,21 @@ _TITULO_FUERA_DE_PERFIL = re.compile(
     # Reporting Analyst. Se evalúan después de las pistas de título, así que
     # «HR Data Analyst» o «Financial Data Analyst» siguen siendo Data Analyst.
     r"hr|human resources|people operations|recruiting|recruitment|"
-    r"finance|financial|accounting|payroll|tax|audit|treasury|controller)\b"
+    r"finance|financial|accounting|payroll|tax|audit|treasury|controller|"
+    # Fase 1H: profesiones que no son ninguna de las diez categorías y que, al
+    # dejar de descartarse por «categoría desconocida», entrarían como candidatas
+    # sin serlo. La lista es deliberadamente corta: sólo lo que no admite duda.
+    r"ads|media buyer|paid media|marketing|sales|account executive|account manager|"
+    r"business development|product owner|product manager|program manager|"
+    r"project manager|scrum master|animator|artist|illustrator|video editor|"
+    r"counsellor|counselor|tutor|interpreters?|translators?|content writer|writer|"
+    r"social media|community manager|"
+    # Términos tomados de ofertas reales del catálogo que, al dejar de descartar
+    # por «categoría desconocida», entraban como candidatas sin serlo.
+    r"devops|sre|site reliability|qa|test\w*|quality assurance|cad|script\w*|"
+    r"cryptograph\w*|cloud|sysadmin|systems administrator|network\w*|"
+    r"supply chain|logistic\w*|logistik\w*|procurement|intern\w*|co op|"
+    r"praktikum|werkstudent\w*|apprentice|working student|teamleiter\w*)\b"
 )
 
 # Para aceptar una categoría detectada sólo en el cuerpo, el título tiene que
@@ -361,9 +375,11 @@ _TITULO_ADMINISTRATIVO = re.compile(
     r"|\bvirtual\s+assistant\b"
 )
 #: Guardas: un «operations associate» de depósito no es back office.
+#: «delivery» y «pick» quedaban fuera a propósito: «Client Delivery» es trabajo
+#: de agencia, no reparto. La guarda necesita señal inequívoca de depósito.
 _ADMIN_GUARDA = re.compile(
-    r"\b(?:warehouse|forklift|inventory|stock|shipping|receiving|driver|delivery|"
-    r"logistics|pick(?:ing)?|packing|fulfilment|fulfillment|store|retail floor)\b")
+    r"\b(?:warehouse|forklift|inventory|stock|shipping|receiving|driver|"
+    r"logistics|packing|fulfilment|fulfillment|store|retail floor)\b")
 _TITULO_SOPORTE_CONTEXTO = re.compile(
     r"\bhelp\s?desk(?:\s+(?:agent|specialist|analyst|technician|tier\s*\d))?\b"
     r"|\bservice\s+desk(?:\s+(?:agent|analyst|specialist))?\b"
@@ -1457,13 +1473,26 @@ def categoria_de(titulo: str, texto: str,
     if contextual is not None:
         return contextual[0], contextual[1], "titulo"
 
+    if _TITULO_ADMINISTRATIVO.search(en_titulo) and _ADMIN_GUARDA.search(cuerpo):
+        # «Operations Associate» de un depósito: el título es administrativo pero
+        # el aviso describe logística. Eso sí es un rol fuera del perfil.
+        return (None,
+                "el título es administrativo pero el aviso describe tareas de "
+                "depósito o logística", "ninguno")
+
     if not _TITULO_AFIN.search(en_titulo):
-        return None, "el título no es afín a las categorías del perfil", "ninguno"
+        # No reconocer la categoría NO es incumplirla: es no saber. Se marca como
+        # desconocida para que la oferta se revise en vez de descartarse.
+        return (None,
+                "no se reconoce la categoría del título: hay que leer el aviso",
+                "desconocido")
 
     indicio = _categoria_por_cuerpo(en_titulo, normalizar(texto[:1500]), permitidas)
     if indicio is not None:
         return indicio
-    return None, "sin coincidencia con las diez categorías del perfil", "ninguno"
+    return (None,
+            "el título no coincide con ninguna de las diez categorías del perfil: "
+            "hay que leer el aviso", "desconocido")
 
 
 
@@ -1519,9 +1548,15 @@ def _territorio(region: str | None, titulo: str, texto: str) -> tuple[str, str, 
     exclusion_explicita = _exclusion_explicita_de_fuente(
         campo, en_titulo, lista_previa, region)
 
+    #: Marcas de exclusividad explícita en la etiqueta. «USA Only» no admite
+    #: matices: el «worldwide» de un pie de página no la convierte en duda.
+    exclusivo = re.search(
+        r"\b(only|solo|solamente|exclusiv\w*|must be (?:based|located)|"
+        r"residents? only|based in)\b", campo)
+
     def _campo_excluye(motivo: str, restriccion: str):
         """Exclusión por etiqueta de fuente, salvo contradicción con el cuerpo."""
-        if alcance_cuerpo:
+        if alcance_cuerpo and not exclusivo:
             return ("duda",
                     f"{motivo}; el cuerpo declara «{alcance_cuerpo}»: metadatos "
                     f"contradictorios, confirmar el alcance antes de postular",
@@ -1809,8 +1844,11 @@ def _ingles_en_clausula(clausula: str, nivel: str,
         if _NIVELES_CEFR[pedido] <= _RANGO_PERFIL.get(nivel, 0):
             return ("cumplido",
                     f"exige inglés {pedido.upper()} y el perfil declara {nivel_mostrado}", 8)
-        return ("parcial",
-                f"exige inglés {pedido.upper()}; el perfil declara {nivel_mostrado}", 0)
+        # Un nivel CEFR explícito por encima del perfil es una barrera demostrada,
+        # no una duda: el aviso dice C1 y el perfil declara B1. «Fluido» o
+        # «nativo» sin nivel siguen siendo duda, porque no fijan una escala.
+        return ("incumplido",
+                f"exige inglés {pedido.upper()} y el perfil declara {nivel_mostrado}", 0)
     if re.search(r"\b(native|fluent|bilingual)\b", clausula):
         return ("parcial",
                 f"exige inglés fluido o nativo; el perfil declara {nivel_mostrado}", 0)
@@ -2337,7 +2375,13 @@ def evaluar(oferta: dict, perfil: dict) -> Evaluacion:
     motivos_duros: list[tuple[int, str]] = []
 
     # --- filtro duro 1: categoría --------------------------------------
-    if categoria is None:
+    if categoria is None and origen_categoria == "desconocido":
+        # Información insuficiente: no se descarta, se revisa. Descartar por no
+        # reconocer el título es lo que dejaba el embudo en 2 de 2.744.
+        incertidumbres.append(motivo_categoria)
+        decisivas.append(motivo_categoria)
+        razones.append({"tipo": "categoria", "texto": motivo_categoria, "efecto": "duda"})
+    elif categoria is None:
         excluye = True
         motivos_duros.append((6, motivo_categoria))
         razones.append({"tipo": "categoria", "texto": motivo_categoria, "efecto": "excluye"})

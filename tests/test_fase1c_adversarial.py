@@ -319,7 +319,7 @@ def test_perfil_operativo_b1_y_constante_de_demostracion_b2_intactas(tmp_path):
     # contra la instalación operativa: la comprobación usa una raíz temporal.
     rutas = config.crear_estructura(tmp_path / "perfil-temporal")
     assert perfil_mod.perfil(rutas)["idioma"]["ingles"] == "B2"
-    assert config.RULES_VERSION == "rules-3.3.0"
+    assert config.RULES_VERSION == "rules-3.4.0"
 
 
 def test_evaluar_no_toca_la_base_temporal(entorno):

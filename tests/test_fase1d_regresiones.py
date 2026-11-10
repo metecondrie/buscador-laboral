@@ -487,7 +487,7 @@ def test_negacion_de_reubicacion_no_tapa_otra_clausula_que_si_exige():
 # --- Resguardos de la fase --------------------------------------------------
 
 def test_resguardos_de_la_fase():
-    assert config.RULES_VERSION == "rules-3.3.0"
+    assert config.RULES_VERSION == "rules-3.4.0"
     assert PERFIL_EJEMPLO["idioma"]["ingles"] == "B2"
     assert PERFIL_B1["idioma"]["ingles"] == "B1"
     assert PERFIL_B1["territorio"]["remoto_obligatorio"] is True

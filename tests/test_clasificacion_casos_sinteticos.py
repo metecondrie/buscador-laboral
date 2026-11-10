@@ -298,8 +298,8 @@ def test_reglas_es_3_1_0():
     obliga a mirar el anexo cada vez que la versión se mueve.
     """
     from buscador import config
-    assert config.RULES_VERSION == "rules-3.3.0"
-    assert rules.RULES_VERSION == "rules-3.3.0"
+    assert config.RULES_VERSION == "rules-3.4.0"
+    assert rules.RULES_VERSION == "rules-3.4.0"
 
 
 def test_evaluar_no_escribe_en_la_base(tmp_path):

@@ -14,11 +14,11 @@ from pathlib import Path
 
 APP_NOMBRE = "BuscadorLaboral"
 VERSION_APP = "0.2.1"
-#: 3.3.0 (2026-11-10): separa «nivel intermedio» de «gestión de personas» y
-#: deja de otorgar categoría por palabras genéricas del cuerpo («reporting»).
-#: Cambiar la versión es lo que hace que `sincronizar_reglas` vuelva a
-#: clasificar el catálogo: sin esto, las ofertas conservarían el veredicto viejo.
-RULES_VERSION = "rules-3.3.0"
+#: 3.4.0 (2026-11-10): una categoría no reconocida deja de ser un requisito
+#: incumplido y pasa a ser información faltante (candidata a revisar). Un nivel
+#: CEFR explícito por encima del perfil pasa a ser barrera demostrada. Cambiar la
+#: versión es lo que hace que `sincronizar_reglas` vuelva a clasificar el catálogo.
+RULES_VERSION = "rules-3.4.0"
 AGRUPACION_VERSION = "identidad-1.1.0"
 
 HOST_LOCAL = "127.0.0.1"

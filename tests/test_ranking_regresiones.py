@@ -30,14 +30,19 @@ def evaluar(**cambios):
 
 # 1. «Risk&AI Manager» aparecía como Customer Support elegible por el cuerpo.
 def test_manager_con_mencion_de_soporte_no_es_elegible():
-    """Era «Customer Support elegible». Ahora ni siquiera entra a las categorías."""
+    """Era «Customer Support elegible». Hoy: categoría desconocida + gestión.
+
+    Fase 1H: no reconocer la categoría ya no descarta (es información faltante).
+    Lo que impide postularse acá es la gestión declarada en el título.
+    """
     e = evaluar(
         titulo="Risk & AI Manager",
         texto="You will coordinate our customer support team and report risks. Remote.",
     )
     assert e.categoria is None
-    assert e.elegibilidad == "incompatible"
-    assert e.compatibilidad is None
+    assert e.origen_categoria == "desconocido"
+    assert e.elegibilidad == "doubtful"
+    assert any("gestión" in i for i in e.incertidumbres)
 
 
 def test_manager_de_soporte_con_titulo_afin_queda_dudoso():
