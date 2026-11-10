@@ -293,13 +293,13 @@ def test_alcance_mundial_en_el_cuerpo_sin_region_se_acepta():
 def test_reglas_es_3_1_0():
     """[OK] La caracterización corresponde a la versión vigente de reglas.
 
-    Se actualizó a `rules-3.2.0` el 2026-11-10: la revisión cambió el
+    Se actualizó a `rules-3.3.0` el 2026-11-10: la revisión cambió el
     comportamiento a propósito (casos C, L y M), y esta prueba es el ancla que
     obliga a mirar el anexo cada vez que la versión se mueve.
     """
     from buscador import config
-    assert config.RULES_VERSION == "rules-3.2.0"
-    assert rules.RULES_VERSION == "rules-3.2.0"
+    assert config.RULES_VERSION == "rules-3.3.0"
+    assert rules.RULES_VERSION == "rules-3.3.0"
 
 
 def test_evaluar_no_escribe_en_la_base(tmp_path):
