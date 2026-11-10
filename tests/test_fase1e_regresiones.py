@@ -268,6 +268,6 @@ def test_d3_it_operations_sin_tareas_del_perfil_no_es_elegible():
 # ===========================================================================
 
 def test_fase1e_no_cambia_la_version_ni_el_perfil_de_demostracion():
-    assert config.RULES_VERSION == "rules-3.3.0"
+    assert config.RULES_VERSION == "rules-3.4.0"
     assert PERFIL_B1["idioma"]["ingles"] == "B1"
     assert PERFIL_EJEMPLO["idioma"]["ingles"] == "B2"

@@ -374,7 +374,10 @@ def test_nivel_de_ingles_superior_al_perfil_no_se_da_por_cumplido(texto, nivel):
     assert e.requisitos["estado_idioma"] != "cumplido"
     assert "B1" in " ".join(e.razones_texto() + e.incertidumbres)
     assert nivel in " ".join(e.razones_texto() + e.incertidumbres)
-    assert e.elegibilidad != "incompatible"  # es duda, no un descarte
+    # Fase 1H: un CEFR explícito por encima del perfil es una barrera demostrada,
+    # no una duda. El aviso fija la escala (C1) y el perfil declara B1.
+    assert e.elegibilidad == "incompatible"
+    assert e.requisitos["estado_idioma"] == "incumplido"
 
 
 def test_ingles_sin_nivel_no_se_inventa_como_cumplido_con_b1():
@@ -407,7 +410,7 @@ def test_negacion_de_espanol_no_tapa_otro_idioma_obligatorio():
 # ===========================================================================
 
 def test_no_se_cambia_la_version_de_reglas_ni_el_perfil():
-    assert config.RULES_VERSION == "rules-3.3.0"
+    assert config.RULES_VERSION == "rules-3.4.0"
     assert PERFIL_EJEMPLO["idioma"]["ingles"] == "B2"   # constante de demostración, intacta
     assert PERFIL_B1["idioma"]["ingles"] == "B1"      # perfil operativo: se mantiene B1
     assert PERFIL_B1["territorio"]["remoto_obligatorio"] is True

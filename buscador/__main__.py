@@ -463,6 +463,27 @@ def cmd_perfil(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_candidatas(args: argparse.Namespace) -> int:
+    """Lista las candidatas: ni elegibles estrictas ni descartadas."""
+    from . import candidatas as cand
+
+    rutas = config.crear_estructura()
+    db.inicializar(rutas.db)
+    conn = db.conectar(rutas.db)
+    try:
+        lista = cand.listar(conn, limite=args.limite,
+                            solo_territorio_confirmado=not args.todas)
+        if args.json:
+            _imprimir({"resumen": cand.resumen(lista),
+                       "candidatas": [c.como_dict() for c in lista]})
+        else:
+            print(cand.texto(lista, maximo=args.limite))
+            print(json.dumps(cand.resumen(lista), ensure_ascii=False))
+    finally:
+        conn.close()
+    return 0
+
+
 def cmd_demo(args: argparse.Namespace) -> int:
     """Modo demostración: datos sintéticos, sin red y sin tocar la base real.
 
@@ -519,6 +540,14 @@ def main(argv: list[str] | None = None) -> int:
 
     stop = sub.add_parser("stop", help="cierra el servidor local de forma ordenada")
     stop.set_defaults(func=cmd_stop)
+
+    candidatas = sub.add_parser(
+        "candidatas", help="ofertas para revisar: territorio confirmado y sin barrera demostrada")
+    candidatas.add_argument("--limite", type=int, default=60)
+    candidatas.add_argument("--todas", action="store_true",
+                            help="incluye las que tienen conflicto de territorio")
+    candidatas.add_argument("--json", action="store_true")
+    candidatas.set_defaults(func=cmd_candidatas)
 
     demo = sub.add_parser(
         "demo", help="modo demostración sin red: datos sintéticos en una base aparte")

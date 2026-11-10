@@ -253,8 +253,10 @@ def test_l02_ingles_fluido_no_se_promueve(nivel):
 
 
 def test_l02_b1_no_aprueba_b2_explicito():
+    """B2 explícito contra un perfil B1 es barrera demostrada, no duda."""
     e = evaluar(texto="SQL required. Excel required. English B2 required. Remote.")
-    assert e.requisitos["estado_idioma"] == "parcial"
+    assert e.requisitos["estado_idioma"] == "incumplido"
+    assert e.elegibilidad == "incompatible"
 
 
 def test_l02_b1_aprueba_b1_explicito():
@@ -391,3 +393,109 @@ def test_g2_mentor_y_coaching_no_son_gestion_de_personas():
         seniority=None)
     assert not any("gestión" in i for i in e.incertidumbres)
 
+
+
+# --- Fase 1H · desconocido no es incumplido -------------------------------
+
+@pytest.mark.parametrize("titulo", [
+    "Onboarding Coach - LATAM", "Client Services Associate I", "Renewals Associate",
+])
+def test_h1_categoria_no_reconocida_no_es_incompatible(titulo):
+    """No reconocer el título es información faltante, no un requisito incumplido."""
+    e = evaluar(titulo=titulo, texto="Remote. Work with the team. Excel.")
+    assert e.categoria is None
+    assert e.origen_categoria == "desconocido"
+    assert e.elegibilidad == "doubtful"
+    assert any("no se reconoce la categoría" in i for i in e.incertidumbres)
+
+
+@pytest.mark.parametrize("titulo", [
+    "Software Engineer", "Registered Nurse", "Paid Ads Specialist",
+    "Product Owner", "Business Development Manager", "HR Assistant",
+])
+def test_h1_las_profesiones_ajenas_siguen_fuera(titulo):
+    """La lista de roles fuera de perfil es la barrera demostrada."""
+    e = evaluar(titulo=titulo, texto="Remote. Excel. SQL.")
+    assert e.elegibilidad == "incompatible"
+    assert "fuera de las categorías" in e.motivo_elegibilidad
+
+
+def test_h2_un_cefr_explicito_superior_es_barrera_no_duda():
+    e = evaluar(texto="SQL required. Excel required. English C1 required. Remote.")
+    assert e.requisitos["estado_idioma"] == "incumplido"
+    assert e.elegibilidad == "incompatible"
+
+
+def test_h2_fluido_sin_nivel_sigue_siendo_duda():
+    e = evaluar(texto="SQL required. Excel required. Fluent English required. Remote.")
+    assert e.requisitos["estado_idioma"] == "parcial"
+    assert e.elegibilidad == "doubtful"
+
+
+def test_h3_client_delivery_no_es_deposito():
+    """«Client Delivery» es trabajo de agencia: la guarda de depósito no aplica."""
+    categoria, _, _ = rules.categoria_de(
+        "Operations Associate (Hiring or Client Delivery)",
+        "Own the hiring funnel and client delivery.", PERFIL["categorias"])
+    assert categoria == "VA/Data Entry"
+
+
+def test_h3_deposito_real_sigue_fuera():
+    categoria, _, _ = rules.categoria_de(
+        "Operations Associate",
+        "Manage warehouse inventory, forklift operation and shipping schedules.",
+        PERFIL["categorias"])
+    assert categoria is None
+
+
+# --- Fase 1H · desconocido no es incumplido -------------------------------
+
+@pytest.mark.parametrize("titulo", [
+    "Onboarding Coach - LATAM", "Client Services Associate I", "Renewals Associate",
+])
+def test_h1_categoria_no_reconocida_no_es_incompatible(titulo):
+    """No reconocer el título es información faltante, no un requisito incumplido."""
+    e = evaluar(titulo=titulo, texto="Remote. Work with the team. Excel.")
+    assert e.categoria is None
+    assert e.origen_categoria == "desconocido"
+    assert e.elegibilidad == "doubtful"
+    assert any("no se reconoce la categoría" in i for i in e.incertidumbres)
+
+
+@pytest.mark.parametrize("titulo", [
+    "Software Engineer", "Registered Nurse", "Paid Ads Specialist",
+    "Product Owner", "Business Development Manager", "HR Assistant",
+])
+def test_h1_las_profesiones_ajenas_siguen_fuera(titulo):
+    """La lista de roles fuera de perfil es la barrera demostrada."""
+    e = evaluar(titulo=titulo, texto="Remote. Excel. SQL.")
+    assert e.elegibilidad == "incompatible"
+    assert "fuera de las categorías" in e.motivo_elegibilidad
+
+
+def test_h2_un_cefr_explicito_superior_es_barrera_no_duda():
+    e = evaluar(texto="SQL required. Excel required. English C1 required. Remote.")
+    assert e.requisitos["estado_idioma"] == "incumplido"
+    assert e.elegibilidad == "incompatible"
+
+
+def test_h2_fluido_sin_nivel_sigue_siendo_duda():
+    e = evaluar(texto="SQL required. Excel required. Fluent English required. Remote.")
+    assert e.requisitos["estado_idioma"] == "parcial"
+    assert e.elegibilidad == "doubtful"
+
+
+def test_h3_client_delivery_no_es_deposito():
+    """«Client Delivery» es trabajo de agencia: la guarda de depósito no aplica."""
+    categoria, _, _ = rules.categoria_de(
+        "Operations Associate (Hiring or Client Delivery)",
+        "Own the hiring funnel and client delivery.", PERFIL["categorias"])
+    assert categoria == "VA/Data Entry"
+
+
+def test_h3_deposito_real_sigue_fuera():
+    categoria, _, _ = rules.categoria_de(
+        "Operations Associate",
+        "Manage warehouse inventory, forklift operation and shipping schedules.",
+        PERFIL["categorias"])
+    assert categoria is None
