@@ -25,6 +25,7 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -478,6 +479,16 @@ def simular(sin_pruebas: bool = False) -> int:
         )
         if clonado.returncode != 0:
             raise RuntimeError(f"no se pudo clonar la copia: {clonado.stderr.strip()}")
+        # `local.json` guarda los valores de la máquina con los que se sanea
+        # (nombre, correo, bandas salariales). Está fuera del repositorio a
+        # propósito, así que `git clone` no lo trae. Sin él, el clon sanea en
+        # otro espacio y sus huellas no coinciden con las de la copia: el sync
+        # declararía un conflicto falso y no publicaría nada. Se copia al clon
+        # temporario, que nunca se commitea (el archivo está ignorado).
+        if saneado.LOCAL.is_file():
+            destino_local = clon / "tools" / "publicacion" / "local.json"
+            destino_local.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(saneado.LOCAL, destino_local)
         anterior = _RAIZ_ACTIVA
         _RAIZ_ACTIVA = clon
         entorno_previo = os.environ.get("BUSCADOR_SIMULACION")
