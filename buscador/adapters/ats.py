@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .. import fetch
+from .. import config, fetch
 from ..textutil import fecha_iso, html_a_texto, url_canonica
 from .base import Adaptador, Observacion, Particion, ResultadoFuente, estado_desde_error
 
@@ -47,7 +47,14 @@ class _BaseATS(Adaptador):
             return ResultadoFuente(source_id=self.source_id, estado="empty_valid",
                                    detalle={"motivo": "tablero sin organización"})
         try:
-            datos, respuesta = fetch.descargar_json(self.url_de(org), self.dominios)
+            # Los tableros de empresa devuelven TODAS las vacantes en una sola
+            # respuesta. Una consultora con ~800 puestos supera el límite global
+            # de 5 MB y se perdía entera (bluelightconsulting, medido el
+            # 2026-11-10). Los ATS son APIs públicas de vacantes: se les da un
+            # tope mayor, sin tocar el límite del resto de las fuentes.
+            datos, respuesta = fetch.descargar_json(
+                self.url_de(org), self.dominios,
+                limite_bytes=config.LIMITE_BYTES_RESPUESTA_ATS)
         except fetch.ErrorFuente as exc:
             return estado_desde_error(exc, self.source_id)
 
