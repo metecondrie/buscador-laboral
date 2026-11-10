@@ -238,7 +238,19 @@ def _resolver_por_saneado(ruta: str, estado_archivo: str, base: str,
 
     huella_actual = saneado.huella_funcional(actual, ruta)
     huella_base = saneado.huella_funcional(cambio["saneado_base"], ruta)
-    if huella_actual.startswith("!") or huella_actual != huella_base:
+    huella_head = saneado.huella_funcional(cambio["saneado_head"], ruta)
+    if huella_actual.startswith("!"):
+        return "conflicto", "el archivo actual no se puede analizar"
+    # Si el archivo **ya es** la representación saneada del head y el cambio no
+    # es un equivalente (en el equivalente base y head coinciden, así que la
+    # guarda de divergencia de abajo no se dispara), el cambio ya está
+    # aplicado: escribirlo de nuevo no cambiaría nada y no hay trabajo local
+    # que proteger. Sin esta guarda, una simulación hecha sobre un árbol ya
+    # sincronizado se declararía en conflicto consigo misma, y la publicación
+    # de cualquier cambio de código quedaría bloqueada.
+    if not cambio["equivalente"] and huella_actual == huella_head:
+        return "ya_aplicado", "el archivo ya está en la representación saneada del head"
+    if huella_actual != huella_base:
         return "conflicto", "la copia divergió funcionalmente de la base saneada"
 
     if saneado.verificar_texto(cambio["saneado_head"], ruta):
@@ -283,6 +295,7 @@ def sincronizar(sin_push: bool = False, sin_pruebas: bool = False,
     listado = git("diff", "--name-status", base, head, cwd=ORIGINAL).splitlines()
     aplicados, reemplazados, omitidos, conflictos, creados = [], [], [], [], []
     equivalentes: list[str] = []
+    ya_aplicados: list[str] = []
     for linea in listado:
         partes = linea.split("\t")
         estado_archivo, ruta = partes[0], partes[-1]
@@ -309,6 +322,8 @@ def sincronizar(sin_push: bool = False, sin_pruebas: bool = False,
             conflictos.append(f"{ruta} ({motivo})")
         elif clasificacion == "equivalente":
             equivalentes.append(ruta)
+        elif clasificacion == "ya_aplicado":
+            ya_aplicados.append(ruta)
         else:
             reemplazados.append(ruta)
             if estado_archivo.startswith("A"):
@@ -353,7 +368,12 @@ def sincronizar(sin_push: bool = False, sin_pruebas: bool = False,
         print("\n--- SIMULACIÓN (sin commit, sin registro, sin push) ---")
         print(f"aplicados por parche: {len(aplicados)} · reemplazados por "
               f"representación saneada: {len(reemplazados)} · equivalentes: "
-              f"{len(equivalentes)} · omitidos: {len(omitidos)} · conflictos: 0")
+              f"{len(equivalentes)} · ya aplicados: {len(ya_aplicados)} · "
+              f"omitidos: {len(omitidos)} · conflictos: 0")
+        if ya_aplicados:
+            print("ya aplicados (el árbol ya estaba en el head):")
+            for ruta in ya_aplicados:
+                print(f"  {ruta}")
         if equivalentes:
             print("equivalentes (sin cambios publicables):")
             for ruta in equivalentes:
