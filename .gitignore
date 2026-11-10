@@ -36,3 +36,7 @@ dist/
 
 # Material de trabajo con datos reales: no se versiona (queda fuera del repo)
 docs/AUDITORIA_25_OFERTAS.md
+
+# Material con datos reales: no se versiona en la copia publicable
+docs/auditoria-2026-11-07/
+docs/AUDITORIA_25_OFERTAS.md
