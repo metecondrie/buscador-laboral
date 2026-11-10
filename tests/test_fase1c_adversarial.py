@@ -311,11 +311,13 @@ def test_contradiccion_de_un_mismo_idioma_queda_para_revisar():
 # 6. Resguardos de la fase: B1, versión, perfil de demostración y base
 # ===========================================================================
 
-def test_perfil_operativo_b1_y_constante_de_demostracion_b2_intactas():
+def test_perfil_operativo_b1_y_constante_de_demostracion_b2_intactas(tmp_path):
     assert PERFIL_EJEMPLO["idioma"]["ingles"] == "B2"
     assert PERFIL_B1["idioma"]["ingles"] == "B1"
     # RIESGO DOCUMENTADO: `perfil --real` aplica perfil_mod.perfil(rutas) (B2) y
-    # guarda el perfil en disco + fuerza reclasificación total. No se ejecuta.
+    # guarda el perfil en disco + fuerza reclasificación total. No se ejecuta
+    # contra la instalación operativa: la comprobación usa una raíz temporal.
+    rutas = config.crear_estructura(tmp_path / "perfil-temporal")
     assert perfil_mod.perfil(rutas)["idioma"]["ingles"] == "B2"
     assert config.RULES_VERSION == "rules-3.1.0"
 

@@ -231,7 +231,7 @@ def _resolver_por_saneado(ruta: str, estado_archivo: str, base: str,
         return "conflicto", f"no se pudo leer una versión del original: {exc}"
 
     destino = raiz_activa() / ruta
-    actual = (destino.read_text(encoding="utf-8", newline="")
+    actual = (saneado.leer_texto(destino)
               if destino.is_file() else "")
     cambio = saneado.clasificar_cambio(base_txt, head_txt, ruta)
     if not cambio["valida"]:
@@ -263,7 +263,7 @@ def _resolver_por_saneado(ruta: str, estado_archivo: str, base: str,
     destino.parent.mkdir(parents=True, exist_ok=True)
     # Se escribe normalizado (LF): la próxima sincronización ya no choca con
     # CRLF. Git con autocrlf guarda LF en el índice, así que no cambia el diff.
-    destino.write_text(cambio["saneado_head"], encoding="utf-8", newline="")
+    saneado.escribir_texto(destino, cambio["saneado_head"])
     return "reemplazado", "representación saneada equivalente al head"
 
 
@@ -313,7 +313,7 @@ def sincronizar(sin_push: bool = False, sin_pruebas: bool = False,
             contenido = git("show", f"{head}:{ruta}", cwd=ORIGINAL)
             destino = raiz_activa() / ruta
             destino.parent.mkdir(parents=True, exist_ok=True)
-            destino.write_text(contenido, encoding="utf-8", newline="")
+            saneado.escribir_texto(destino, contenido)
             reemplazados.append(ruta)
             continue
         # Código: el parche crudo no aplica sobre una copia saneada. Se compara
