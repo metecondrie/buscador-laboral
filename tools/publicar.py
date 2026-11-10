@@ -56,10 +56,27 @@ def registro() -> Path:
     return raiz_activa() / REGISTRO
 
 #: Archivos que la copia no recibe del original: tienen versión saneada propia.
+#:
+#: - `buscador/perfil.py` y `README.md`: versión de ejemplo, sin datos reales.
+#: - `docs/muestra-validacion.*`: la copia guarda una versión **anonimizada**
+#:   (sin empresa, título, URL ni identificador de aviso). La del original trae
+#:   ofertas reales y los veredictos del perfil real: no se publica.
+#: - `docs/evidencia/auditoria-credenciales.txt`: la copia guarda la versión
+#:   recortada. La del original enumera metadatos de credenciales de otras
+#:   aplicaciones del equipo.
+#: - `docs/auditoria-2026-11-07/` y `docs/AUDITORIA_25_OFERTAS.md`: auditorías
+#:   con ofertas reales (empresa, título, URL) y el perfil real evaluado. En la
+#:   copia, la versión equivalente y anonimizada es
+#:   `docs/ANEXO_CASOS_ANONIMIZADOS.md`.
 NO_SINCRONIZAR = {
     "buscador/perfil.py",  # el perfil real no se publica
     "README.md",           # instrucciones propias de la copia publicable
     "docs/sincronizacion-github.md",
+    "docs/muestra-validacion.csv",
+    "docs/muestra-validacion.md",
+    "docs/evidencia/auditoria-credenciales.txt",
+    "docs/auditoria-2026-11-07/",
+    "docs/AUDITORIA_25_OFERTAS.md",
     "tools/publicar.py",
     "tools/publicacion/saneado.py",
     "tools/publicacion/__init__.py",
