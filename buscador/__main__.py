@@ -412,15 +412,9 @@ def cmd_perfil(args: argparse.Namespace) -> int:
         if args.real:
             from . import perfil as perfil_mod
 
-            semilla = perfil_mod.ruta_local(rutas)
-            if not semilla.exists():
-                print(f"No hay perfil local en {semilla}.\n"
-                      f"Cargá el perfil en Configuración o creá ese archivo: "
-                      f"no se aplica el perfil de ejemplo sobre el perfil activo.")
-                return 2
             perfil = worker.guardar_perfil(conn, rutas, perfil_mod.perfil(rutas),
-                                           origen="perfil-local")
-            print(f"Perfil local {perfil['version']} aplicado; "
+                                           origen=perfil_mod.ORIGEN)
+            print(f"Perfil real {perfil['version']} aplicado; "
                   f"{perfil['encoladas']} ofertas reencoladas.")
             return 0
         if args.importar:
@@ -527,7 +521,7 @@ def main(argv: list[str] | None = None) -> int:
     perfil = sub.add_parser("perfil", help="muestra, aplica o importa el perfil")
     perfil.add_argument("--importar", default="")
     perfil.add_argument("--real", action="store_true",
-                        help="aplica el perfil local guardado por el usuario")
+                        help="aplica el perfil fundamentado en la memoria de el usuario")
     perfil.set_defaults(func=cmd_perfil)
 
     args = parser.parse_args(argv)
