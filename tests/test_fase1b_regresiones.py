@@ -407,7 +407,7 @@ def test_negacion_de_espanol_no_tapa_otro_idioma_obligatorio():
 # ===========================================================================
 
 def test_no_se_cambia_la_version_de_reglas_ni_el_perfil():
-    assert config.RULES_VERSION == "rules-3.1.0"
+    assert config.RULES_VERSION == "rules-3.2.0"
     assert PERFIL_EJEMPLO["idioma"]["ingles"] == "B2"   # constante de demostración, intacta
     assert PERFIL_B1["idioma"]["ingles"] == "B1"      # perfil operativo: se mantiene B1
     assert PERFIL_B1["territorio"]["remoto_obligatorio"] is True

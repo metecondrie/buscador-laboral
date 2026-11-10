@@ -2,6 +2,14 @@
 
 Muestra de **44 ofertas**, sacada del catálogo clasificado con `rules-3.1.0`.
 
+> **Procedencia (V02).** Esta copia es un corte histórico del 2026-11-09 tomado
+> con un tamaño de muestra más amplio. La herramienta `tools/muestra_validacion.py`
+> genera por defecto 25 filas y escribe la procedencia exacta en
+> `muestra-validacion.meta.json` (reglas, fecha, tamaño y columnas). El CSV
+> publicado se corresponde con las columnas que produce esa herramienta —sin
+> título, empresa, URL ni identificador— y está en UTF-8 sin BOM. Para
+> regenerarlo: `python tools/muestra_validacion.py --tamano 25`.
+
 **No contiene datos reales**: sin empresa, sin título del puesto, sin URL y
 sin identificador de aviso. La versión con los datos originales no se
 publica; queda sólo en el proyecto de trabajo.

@@ -101,7 +101,8 @@ def test_ingenieria_no_cae_en_va_por_mencion_suelta():
 # 5. Avisos de 2025 abiertos sin comprobación reciente.
 def test_aviso_viejo_no_se_declara_abierto():
     e = evaluar(publicado_en="2025-06-01T00:00:00Z", expira_en=None)
-    assert e.vigencia == "unknown"
+    assert e.vigencia == "stale"
+    assert e.elegibilidad != "eligible"
     assert e.confianza != "alta"
 
 

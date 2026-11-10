@@ -31,11 +31,14 @@ DIMENSIONES = ("categoria", "territorio", "modalidad", "formacion",
                "seniority", "idioma", "viajes")
 
 #: Familias de territorio. Tokens en minúsculas; la primera que coincide gana.
+#:
+#: T02: el orden importa y «remote» ya no es un token de alcance global. Antes
+#: «Berlin (remote)» o «Hamburg (remote)» caían en «remoto global declarado»
+#: porque la palabra «remote» aparecía en la etiqueta, y el informe contaba 405
+#: descartes como oportunidades globales perdidas. Decir CÓMO se trabaja no dice
+#: DÓNDE se contrata: primero se busca la geografía y el alcance global queda
+#: último, sólo con locuciones que lo declaren de verdad.
 FAMILIAS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("remoto global declarado", (
-        "anywhere in the world", "anywhere", "worldwide", "global", "remote",
-        "home based - worldwide", "home based - emea", "remote worldwide",
-        "todo el mundo")),
     ("Estados Unidos / Canada / America del Norte", (
         "united states", "usa", "u.s.", "north america", "est or ct", "est/ct",
         "canada", "new york", "san francisco", "austin", "boston", "denver", "texas",
@@ -77,6 +80,11 @@ FAMILIAS: tuple[tuple[str, tuple[str, ...]], ...] = (
         "athens", "croatia", "zagreb", "serbia", "belgrade", "ukraine", "moldova",
         "albania", "cyprus", "estonia", "tallinn", "latvia", "riga", "lithuania",
         "vilnius", "iceland", "luxembourg", "malta", "emea", "europe")),
+    # Último a propósito: sólo locuciones que declaran alcance mundial. Ni
+    # «remote» ni «anywhere» a secas, que también describen modalidad.
+    ("remoto global declarado", (
+        "anywhere in the world", "worldwide", "remote worldwide", "global remote",
+        "work from anywhere", "home based - worldwide", "todo el mundo")),
 )
 
 #: Normaliza texto para comparar sin acentos: los avisos traen "México",

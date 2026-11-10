@@ -21,6 +21,10 @@ class Remotive(Adaptador):
     autorizacion = "API pública; la fuente documenta límites de uso razonable"
     atribucion = "Enlace al aviso original en Remotive"
     cuota = "la API devuelve un listado corto; una solicitud por corrida"
+    # F04: verificado el 2026-11-10 — `?category=Customer Support` devuelve
+    # categorías mezcladas (Software Development, Writing, Marketing...). El
+    # parámetro se acepta y se ignora, así que no se particiona por categoría:
+    # sería tráfico redundante sobre el mismo feed.
     frecuencia = "feed mutable; los filtros por categoría no alteran el resultado"
     parser_version = "remotive-1.0.0"
     dominios = DOMINIOS

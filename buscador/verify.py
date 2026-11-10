@@ -33,7 +33,12 @@ def _oferta_desde_observacion(obs: Observacion) -> dict:
         "seniority": obs.seniority,
         "salario": obs.salario,
         "publicado_en": obs.publicado_en,
-        "tipo_contrato": obs.categoria_fuente,
+        # C04: la categoría de la fuente y el tipo de contrato son campos
+        # distintos. Antes la categoría viajaba como `tipo_contrato` y se leía
+        # como si describiera la modalidad de trabajo.
+        "categoria_fuente": obs.categoria_fuente,
+        "skills": obs.skills,
+        "tipo_contrato": obs.extra.get("tipo_contrato"),
     }
 
 
@@ -57,7 +62,14 @@ def verificar_adaptador(source_id: str, limite: int, perfil: dict) -> dict:
     relevantes = [e for e in evaluaciones if e[1].elegibilidad in {"eligible", "doubtful"}]
     elegibles = [e for e in evaluaciones if e[1].elegibilidad == "eligible"]
     incompatibles = [e for e in evaluaciones if e[1].elegibilidad == "incompatible"]
+    revisables = [e for e in evaluaciones if e[1].elegibilidad == "doubtful"]
+    # C6: la calidad no se mide sólo por volumen capturado. Se informa por fuente
+    # cuántas vacantes siguen vigentes de verdad, cuántas hay que revisar y
+    # cuántas se descartan con motivo, además de los fallos HTTP.
+    vigentes = [e for e in evaluaciones if e[1].vigencia == "open"]
+    sin_confirmar = [e for e in evaluaciones if e[1].vigencia == "stale"]
     con_empresa = sum(1 for o, _ in evaluaciones if o.empresa)
+
     con_region = sum(1 for o, _ in evaluaciones if o.region)
     con_salario = sum(1 for o, _ in evaluaciones if o.salario)
     categorias: dict[str, int] = {}
@@ -82,7 +94,10 @@ def verificar_adaptador(source_id: str, limite: int, perfil: dict) -> dict:
         "observaciones": len(resultado.observaciones),
         "relevantes": len(relevantes),
         "elegibles": len(elegibles),
+        "revisables": len(revisables),
         "incompatibles": len(incompatibles),
+        "vigentes": len(vigentes),
+        "vigencia_sin_confirmar": len(sin_confirmar),
         "porcentaje_relevante": round(100 * len(relevantes) / len(evaluaciones), 1) if evaluaciones else 0.0,
         "con_empresa": con_empresa,
         "con_region": con_region,

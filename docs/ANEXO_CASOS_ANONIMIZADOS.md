@@ -4,10 +4,19 @@ Material de apoyo para la revisión independiente. **No contiene ofertas reales*
 los textos son sintéticos, redactados para reproducir un comportamiento concreto
 del motor, sin nombres de empresa, sin URLs y sin identificadores de aviso.
 
-Cada caso dice qué se espera hoy (`rules-3.1.0`) y qué convendría revisar. Los
-casos marcados **[FP]** reproducen falsos positivos: el motor descarta (o deja
-dudosa) una oferta que en realidad es postulable. Los marcados **[FN]** reproducen
-falsos negativos: el motor acepta algo que no debería.
+Cada caso dice qué se espera hoy (`rules-3.1.0`) y qué convendría revisar.
+
+Terminología (corregida el 2026-11-10 · V04; antes estaba invertida):
+
+- **[FP] falso positivo**: el motor **acepta** (o deja pasar) algo que debería
+  rechazar.
+- **[FN] falso negativo**: el motor **rechaza** algo que debería aceptar.
+- **[duda]**: el motor no acepta ni rechaza; lo manda a revisión. Una oferta
+  `doubtful` **no** es un falso negativo: es una decisión pendiente.
+
+Los casos A, C y M cambiaron de comportamiento con la revisión del 2026-11-10.
+Se conserva el diagnóstico original y se agrega el estado nuevo, sin reescribir
+el resultado que se observó entonces.
 
 El comportamiento esperado está codificado en
 `tests/test_clasificacion_casos_sinteticos.py`. Si una mejora cambia alguno de
@@ -27,7 +36,7 @@ escrito para que el resultado no dependa de datos de ninguna persona.
 - categorías: Data Analyst, Business Analyst, BI Analyst, Reporting Analyst,
   SQL Analyst, Data Operations, Research Analyst, VA/Data Entry, Customer Support.
 
-## Caso A · idioma en lista «plus» **[FP, ya corregido]**
+## Caso A · idioma en lista «plus» **[FN, ya corregido]**
 
 > **Aviso.** Customer Support Specialist. Región: Anywhere in the World.
 > «SQL required. Excel required. Bilingual (English/Spanish or Italian, Dutch,
@@ -53,19 +62,23 @@ zona horaria restringida: no admite Argentina».
 **Qué mirar:** la restricción del cuerpo **sí** se lee, aunque la fuente declare
 alcance global. Es el contrapeso del caso C.
 
-## Caso C · el cuerpo contradice a la fuente y gana la fuente **[FP, abierto]**
+## Caso C · el cuerpo contradice a la fuente y gana la fuente **[FN · corregido el 2026-11-10: ahora va a `doubtful`]**
 
 > **Aviso.** Customer Support Specialist. Región declarada por la fuente:
 > `United States`.
 > «SQL required. Excel required. This is a Worldwide Remote position open to
 > applicants from all countries.»
 
-**Comportamiento actual:** `incompatible`, motivo «la fuente restringe la
-ubicación a United States».
+**Comportamiento observado en `rules-3.1.0`:** `incompatible`, motivo «la fuente
+restringe la ubicación a United States».
 
-**Por qué es un falso positivo:** el cuerpo dice explícitamente que se acepta a
-todo el mundo. El motor descarta por el campo de la fuente y **no** deja registro
-de que el cuerpo lo contradice. En el catálogo real hay **405 ofertas** con
+**Comportamiento desde el 2026-11-10:** `doubtful`, con el conflicto nombrado
+(«metadatos contradictorios, confirmar el alcance»). No se acepta solo ni se
+descarta por la etiqueta.
+
+**Por qué era un falso negativo:** el cuerpo dice explícitamente que se acepta a
+todo el mundo. El motor descartaba por el campo de la fuente y **no** dejaba
+registro de que el cuerpo lo contradice. En el catálogo real hay **405 ofertas** con
 alcance global declarado que aun así quedan descartadas (ver
 `docs/INFORME_CLASIFICACION.md` §7.1): este caso es el mecanismo probable.
 
@@ -150,13 +163,14 @@ descarta las **2.330 ofertas sin categoría asignada** (91,6 % del catálogo). E
 detector de categorías es el mayor bloque de descarte y el que más puede estar
 fallando en títulos legítimos.
 
-## Caso I · remoto sin territorio publicado **[FN, abierto]**
+## Caso I · remoto sin territorio publicado **[duda, correcto]**
 
 > **Aviso.** Data Analyst. Sin región declarada.
 > «SQL required. Excel required. This is a fully remote position.»
 
 **Comportamiento actual:** `doubtful`, motivo «la fuente no publica el territorio
-admitido».
+admitido». **No es un falso negativo**: el motor no rechaza la oferta, la manda a
+revisión. Antes este caso figuraba como FN, lo que inflaba el conteo de errores.
 
 **Por qué importa:** las **22 dudosas** del catálogo están todas frenadas por
 información ausente (idioma no declarado, experiencia no declarada, territorio no
@@ -206,26 +220,31 @@ Esta asimetría es el punto central a revisar.
 
 | Caso | Situación | Hoy | Preocupación |
 | --- | --- | --- | --- |
-| A | idioma en lista «plus» | eligible | FP ya corregido |
+| A | idioma en lista «plus» | eligible | FN ya corregido |
 | B | zona horaria en el cuerpo | incompatible | correcto |
-| C | cuerpo contradice a la fuente | incompatible | **FP abierto** |
+| C | cuerpo contradice a la fuente | doubtful | FN corregido: conflicto explícito |
 | D | híbrido fuera de zona | incompatible | correcto |
-| E | título exigido, sin mirar disciplina | incompatible | **FN abierto** |
+| E | título exigido sin alternativa | incompatible | FN abierto: revisar disciplina, no abolir el requisito |
 | F | título preferido | doubtful | correcto |
 | G | 8+ años | incompatible | correcto |
 | H | categoría ajena | incompatible | correcto en sí, ver §6 del informe |
-| I | remoto sin territorio | doubtful | **FN abierto** |
+| I | remoto sin territorio | doubtful | duda correcta (no es FN) |
 | J | inglés fluido con B2 | doubtful | correcto |
 | K | datos mínimos | eligible | línea base |
 | L | mundial en el cuerpo, fuente muda | eligible | correcto |
-| M | aviso corto en inglés | sin razón de idioma | **FP abierto** |
+| M | aviso corto en inglés | duda de idioma declarada | FP corregido: deja trazabilidad |
 
-## Caso M · el aviso corto no deja rastro de idioma **[FP, abierto]**
+## Caso M · el aviso corto no deja rastro de idioma **[FP · corregido el 2026-11-10: deja trazabilidad]**
 
 > **Aviso.** Customer Support Specialist. Región: Anywhere in the World.
 > «SQL required. Excel required.»
 
-**Comportamiento actual:** `eligible`, y **ninguna razón de idioma**. Un aviso
+**Comportamiento observado en `rules-3.1.0`:** `eligible`, y **ninguna razón de
+idioma**.
+
+**Comportamiento desde el 2026-11-10:** sigue sin bloquear, pero declara
+«idioma no evaluado» entre las razones. El aviso ya no pasa como si el idioma
+hubiera sido aprobado. Un aviso
 ligeramente más largo con el mismo english
 («… We are looking for a customer support specialist to join our team.») sí
 genera la razón «el aviso está en inglés pero no declara el nivel exigido».

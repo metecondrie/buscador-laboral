@@ -40,3 +40,6 @@ docs/AUDITORIA_25_OFERTAS.md
 # Material con datos reales: no se versiona en la copia publicable
 docs/auditoria-2026-11-07/
 docs/AUDITORIA_25_OFERTAS.md
+
+# Base de demostración local (modo sin red)
+.demo-tmp/

@@ -304,11 +304,23 @@ def _relativa(raiz: Path, ruta: Path) -> str:
 
 
 def _leer(ruta: Path) -> str:
-    return ruta.read_text(encoding="utf-8", newline="")
+    # `Path.read_text(newline=...)` recién existe desde Python 3.13 y el README
+    # promete 3.10+: con `open` la lectura es idéntica en toda la banda soportada
+    # y conserva los CRLF del archivo (si se normalizaran, el saneado no sería
+    # idempotente ni detectable por hash).
+    with open(ruta, encoding="utf-8", newline="") as manejador:
+        return manejador.read()
 
 
 def _escribir(ruta: Path, texto: str) -> None:
-    ruta.write_text(texto, encoding="utf-8", newline="")
+    with open(ruta, "w", encoding="utf-8", newline="") as manejador:
+        manejador.write(texto)
+
+
+#: Nombres públicos: `publicar.py` también necesita leer y escribir conservando
+#: los saltos de línea originales del archivo.
+leer_texto = _leer
+escribir_texto = _escribir
 
 
 def archivos(raiz: Path) -> list[Path]:

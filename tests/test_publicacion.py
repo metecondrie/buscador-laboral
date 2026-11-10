@@ -280,9 +280,26 @@ def _huella_desde_salida(salida: str) -> str:
     return encontrado[-1]
 
 
-def test_dos_simulaciones_producen_el_mismo_arbol(capsys):
+def _hay_algo_que_simular() -> bool:
+    """La simulación sólo tiene sentido si el original tiene commits nuevos.
+
+    En un clon limpio de GitHub el proyecto original no existe; en la máquina del
+    autor existe pero puede estar al día. En ambos casos la simulación imprime
+    «nada que simular» y no ejerce nada: se omite en vez de fallar, para no
+    convertir el estado de una máquina en un requisito de la suite.
+    """
     if not publicar.ORIGINAL.is_dir():
-        pytest.skip("el proyecto original no está disponible en este entorno")
+        return False
+    try:
+        datos = publicar.estado(silencioso=True)
+    except Exception:  # noqa: BLE001 - sin repo legible no hay simulación posible
+        return False
+    return datos["base_registrada"] != datos["original_head"]
+
+
+def test_dos_simulaciones_producen_el_mismo_arbol(capsys):
+    if not _hay_algo_que_simular():
+        pytest.skip("no hay commits nuevos del original que simular")
     assert publicar.simular(sin_pruebas=True) == 0
     primera = _huella_desde_salida(capsys.readouterr().out)
     assert publicar.simular(sin_pruebas=True) == 0
@@ -291,8 +308,8 @@ def test_dos_simulaciones_producen_el_mismo_arbol(capsys):
 
 
 def test_la_simulacion_no_toca_el_registro_ni_el_repo_real(capsys):
-    if not publicar.ORIGINAL.is_dir():
-        pytest.skip("el proyecto original no está disponible en este entorno")
+    if not _hay_algo_que_simular():
+        pytest.skip("no hay commits nuevos del original que simular")
     antes = (RAIZ / publicar.REGISTRO).read_bytes()
     head_antes = publicar.git("rev-parse", "HEAD")
     assert publicar.simular(sin_pruebas=True) == 0
