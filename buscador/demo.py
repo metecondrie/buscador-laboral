@@ -16,7 +16,7 @@ import os
 import uuid
 from pathlib import Path
 
-from . import config, db, ingest, queue, worker
+from . import config, db, ingest, worker
 from .adapters.base import Observacion, ResultadoFuente
 
 #: Fuente sintética. Se usa F01 porque está sembrada y su dominio es propio; los
