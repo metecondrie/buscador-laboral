@@ -95,6 +95,39 @@ def test_un_exito_reciente_cierra_el_circuito(entorno):
     assert not worker._circuito_abierto(entorno, sid)
 
 
+# --- Límite de descarga ATS -------------------------------------------------
+
+def test_los_tableros_ats_descargan_con_un_limite_mayor(monkeypatch):
+    """Una consultora con ~800 vacantes supera el límite global de 5 MB.
+
+    Se mide el contrato: el adaptador pide el tope ATS, no el general. Sin red.
+    """
+    from buscador import config as config_mod
+    from buscador import fetch
+    from buscador.adapters import ats
+
+    capturado: dict[str, int | None] = {}
+
+    def falso(url, dominios, limite_bytes=None):  # noqa: ANN001
+        capturado["limite_bytes"] = limite_bytes
+        return [], fetch.Respuesta(cuerpo=b"[]", http_status=200,
+                                   url_final=url, content_type="application/json")
+
+    monkeypatch.setattr(fetch, "descargar_json", falso)
+    lever = ats.Lever()
+    resultado = lever.fetch(5, None, ats.Particion("org-x", "Org X", {"org": "org-x"}))
+
+    assert resultado.estado == "empty_valid"
+    assert capturado["limite_bytes"] == config_mod.LIMITE_BYTES_RESPUESTA_ATS
+    assert capturado["limite_bytes"] > config_mod.LIMITE_BYTES_RESPUESTA
+
+
+def test_el_limite_general_no_cambio():
+    from buscador import config as config_mod
+    assert config_mod.LIMITE_BYTES_RESPUESTA == 5 * 1024 * 1024
+    assert config_mod.LIMITE_BYTES_RESPUESTA_ATS > config_mod.LIMITE_BYTES_RESPUESTA
+
+
 # --- Métricas por fuente ---------------------------------------------------
 
 def test_las_metricas_por_fuente_distinguen_revisables_y_vigentes(monkeypatch):

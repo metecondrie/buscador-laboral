@@ -33,6 +33,10 @@ if _CONTACTO:
 USER_AGENT += ")"
 
 LIMITE_BYTES_RESPUESTA = 5 * 1024 * 1024
+#: Tope mayor sólo para los tableros ATS: devuelven todas las vacantes en una
+#: sola respuesta (una consultora con ~800 puestos supera 5 MB). Sigue siendo un
+#: límite de seguridad, pero ajustado al patrón real de esas APIs.
+LIMITE_BYTES_RESPUESTA_ATS = 25 * 1024 * 1024
 TIMEOUT_CONEXION_S = 10
 TIMEOUT_LECTURA_S = 30
 

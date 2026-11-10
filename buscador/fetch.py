@@ -66,7 +66,9 @@ class _RedireccionSegura(urllib.request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 
-def descargar(url: str, dominios: tuple[str, ...], aceptar: str = "*/*") -> Respuesta:
+def descargar(url: str, dominios: tuple[str, ...], aceptar: str = "*/*",
+              limite_bytes: int | None = None) -> Respuesta:
+    limite = limite_bytes or config.LIMITE_BYTES_RESPUESTA
     host = urlsplit(url).hostname or ""
     if not _dominio_permitido(host, dominios):
         raise ErrorFuente("access_restricted", f"dominio no aprobado: {host}")
@@ -85,11 +87,11 @@ def descargar(url: str, dominios: tuple[str, ...], aceptar: str = "*/*") -> Resp
     abridor = urllib.request.build_opener(_RedireccionSegura(dominios))
     try:
         with abridor.open(peticion, timeout=config.TIMEOUT_LECTURA_S) as respuesta:
-            cuerpo = respuesta.read(config.LIMITE_BYTES_RESPUESTA + 1)
-            if len(cuerpo) > config.LIMITE_BYTES_RESPUESTA:
+            cuerpo = respuesta.read(limite + 1)
+            if len(cuerpo) > limite:
                 raise ErrorFuente(
                     "partial",
-                    f"respuesta mayor a {config.LIMITE_BYTES_RESPUESTA} bytes; se descarta",
+                    f"respuesta mayor a {limite} bytes; se descarta",
                     respuesta.status,
                 )
             return Respuesta(
@@ -107,8 +109,10 @@ def descargar(url: str, dominios: tuple[str, ...], aceptar: str = "*/*") -> Resp
         raise ErrorFuente("network_error", f"fallo de red: {exc}") from exc
 
 
-def descargar_json(url: str, dominios: tuple[str, ...]) -> tuple[Any, Respuesta]:
-    respuesta = descargar(url, dominios, aceptar="application/json")
+def descargar_json(url: str, dominios: tuple[str, ...],
+                   limite_bytes: int | None = None) -> tuple[Any, Respuesta]:
+    respuesta = descargar(url, dominios, aceptar="application/json",
+                          limite_bytes=limite_bytes)
     try:
         return json.loads(respuesta.cuerpo.decode("utf-8")), respuesta
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
