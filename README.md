@@ -4,10 +4,35 @@ Aplicación local para Windows que captura ofertas de **catorce fuentes pública
 las clasifica con reglas explicables y deja registrado por qué cada oferta quedó
 elegible, dudosa o descartada.
 
-Este repositorio está preparado para **una revisión independiente de los
-resultados de la clasificación**, no como distribución de datos personales: no trae la base de datos,
-ni el perfil operativo, ni credenciales. Todo lo que hace falta para entender y discutir el
-comportamiento del motor está aquí.
+**Versión 0.2.1 · reglas `rules-3.2.0` (2026-11-10).** Se puede clonar, instalar y
+usar sin la base, el perfil ni las credenciales del autor. Incluye un **modo
+demostración sin red** para ver la aplicación funcionando con datos sintéticos.
+
+Este repositorio no distribuye datos personales: no trae la base de datos, ni el
+perfil operativo, ni credenciales.
+
+## 0. Qué cambió en esta versión (2026-11-10)
+
+Correcciones de la revisión independiente (Gemini + Qwen). El detalle, con estado
+y prueba por hallazgo, está en `docs/IMPLEMENTACION_2026-11-10.md`.
+
+| Área | Corrección |
+| --- | --- |
+| Categorías | `Helpdesk Agent`, `CX Associate`, `Executive Assistant`, `Office Administrator`, `CRM Specialist`, `Operations Associate` y `Billing Specialist` ya se reconocen. Antes quedaban sin categoría o —peor— como `BI Analyst` por mencionar «Power BI» en el cuerpo |
+| Perfil | las categorías del perfil activo mandan; antes el código imponía las suyas |
+| Campos | `categoria_fuente` y `tipo_contrato` dejaron de mezclarse: una etiqueta de categoría se leía como si describiera la modalidad |
+| Formación | «bachelor's degree **or equivalent experience**» ya no descarta; «strictly required» sí |
+| Territorio | si la fuente dice «United States» y el cuerpo dice «worldwide», hay conflicto explícito y va a revisión. Berlín, Múnich, Bulgaria, APAC y Ohio ya no quedan en duda por omisión |
+| Vigencia | estado nuevo `stale`: aviso viejo sin cierre confirmado → revisión, no `eligible` por inercia |
+| Idioma | un aviso corto deja «idioma no evaluado» a la vista; B1 y B2 no se promueven a «fluido» |
+| Alertas | el umbral pasa a configuración (`umbral_aviso`) y se calibró: el techo real de un aviso completo sin experiencia ni formación era 69/73, así que con 75 ninguna oferta de ese tipo podía alertar |
+| Fuentes | 8 tableros ATS verificados uno por uno; partición `geo=latam` en Jobicy; circuito abierto para fuentes con 404/403 persistente |
+| Informe | «Berlin (remote)» ya no cuenta como alcance global |
+| Documentación | etiquetas FP/FN corregidas (estaban invertidas) y muestra de validación saneada y reproducible |
+
+Pendiente y fuera de alcance de esta revisión: la baja administrada de F05
+(The Muse), la migración de la instalación operativa y la calibración empírica
+del puntaje con etiquetas humanas.
 
 - No usa IA por defecto, no envía CV ni postulaciones, y tiene presupuesto de IA USD 0. Las búsquedas sí realizan peticiones HTTP a las fuentes públicas.
 - El servidor sólo escucha en `127.0.0.1`.
@@ -40,22 +65,27 @@ La sección 7 resume los principales focos de investigación. Las secciones 10�
 
 | Aspecto | Estado |
 | --- | --- |
-| Versión de reglas | `rules-3.1.0` (`buscador/config.py`) |
-| Versión de la app | `0.2.0` |
-| Pruebas | Última ejecución informada para el árbol de trabajo: **834 aprobadas**; la copia publicada debe probarse independientemente (el conjunto puede diferir) |
+| Versión de reglas | `rules-3.2.0` (`buscador/config.py`) |
+| Versión de la app | `0.2.1` |
+| Pruebas | **913 aprobadas, 2 omitidas** (las omitidas son la simulación de publicación, que sólo corre si el proyecto original tiene commits nuevos) |
 | Clasificación | operativa: 2.543 ofertas, 2 elegibles, 22 dudosas, 2.519 incompatibles |
 | Captura | operativa: 14 fuentes, corridas cada 12 h |
 | IA | apagada por defecto (presupuesto USD 0) |
 | Respaldo de base | verificado con SHA-256 |
 | Postulación | la app **no** postula; deja el registro del enlace y la fecha |
 
-Lo que **no** está resuelto y no se toca en esta revisión:
+Lo que **no** está resuelto:
 
-- la fuente F05 (The Muse) devolvió 404 / `access_restricted` en las últimas corridas documentadas y acumula
-  incidentes: está documentado en `docs/FASE1_ESTADO_F05.md`, y su baja queda
-  para una fase posterior;
+- la fuente F05 (The Muse) sigue devolviendo 404. Desde esta versión el circuito
+  se abre solo tras dos fallos terminales y la fuente se omite con el motivo a la
+  vista; la baja administrada queda para una fase posterior
+  (`docs/FASE1_ESTADO_F05.md`);
 - la base de datos **no** está en el repositorio: quien revise necesita su
-  propia copia o los números del informe.
+  propia copia, el informe o el modo demostración;
+- las cifras del catálogo (2.543 ofertas, 2 elegibles, 22 dudosas) son un
+  **corte histórico del 2026-11-09** con `rules-3.1.0`. No se recalcularon: no
+  hay base en el repositorio. Cualquier mejora cuantitativa se mide al desplegar
+  sobre datos autorizados.
 
 ## 3. Arquitectura
 
@@ -122,13 +152,13 @@ importan para esta revisión:
 `obsoleto=1`. El estado vigente es `obsoleto=0`, y hay exactamente una fila
 vigente por oferta.
 
-## 4. Instalación
+## 4. Instalación desde cero (Windows)
 
-Requiere **Python 3.10 o superior** (desarrollado sobre 3.14.10, Windows). Sin
-servicios externos: no hay base de datos que levantar ni cuentas que crear.
+Requiere **Python 3.10 o superior** (probado en 3.12 y 3.14). Sin servicios
+externos: no hay base de datos que levantar ni cuentas que crear.
 
 ```bat
-git clone <url-del-repositorio>
+git clone https://github.com/metecondrie/buscador-laboral.git
 cd buscador-laboral
 
 py -3 -m venv .venv
@@ -142,13 +172,40 @@ Para las pruebas, además:
 .venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 ```
 
+### 4.1 Primera ejecución, sin red y sin datos previos
+
+```bat
+.venv\Scripts\python.exe -m buscador demo --reiniciar
+.venv\Scripts\python.exe -m buscador demo --ui
+```
+
+`demo` crea una base **aparte** en `%LOCALAPPDATA%\BuscadorLaboral-demo` con
+ocho ofertas sintéticas, las clasifica por el mismo camino que una corrida real y
+abre la interfaz. No consulta ninguna fuente y no toca la instalación operativa.
+Las ofertas son inventadas: no son resultados de una búsqueda.
+
+### 4.2 Uso real
+
+```bat
+.venv\Scripts\python.exe -m buscador ui
+```
+
+La búsqueda real **sí** necesita red: consulta las fuentes públicas y clasifica lo
+que trae. El perfil de ejemplo (`buscador/perfil.py`) alcanza para arrancar; para
+resultados útiles hay que cargar el perfil propio desde Configuración.
+
 ## 5. Ejecutar las pruebas
 
 ```bat
 .venv\Scripts\python.exe -m pytest tests -q
 ```
 
-La última ejecución de la suite informada antes del push registró **834 pruebas aprobadas** en el árbol de trabajo. **No se afirma que ese resultado valide el HEAD actual**: hay pruebas adicionales de la maquinaria de publicación y de rollback que deben ejecutarse en un entorno aislado. Las pruebas ordinarias no deben acceder a la DB operativa ni a servicios de red; verificar `BUSCADOR_DATA_DIR` antes de ejecutarlas.
+Resultado en un clon limpio con Python 3.12: **913 aprobadas, 2 omitidas, 0
+fallidas**. Las dos omitidas son la simulación de publicación, que sólo corre si
+el proyecto original tiene commits nuevos; en un clon no aplica.
+
+Las pruebas no acceden a la base operativa ni a servicios de red: `conftest.py`
+bloquea los sockets y redirige `BUSCADOR_DATA_DIR` a un directorio temporal.
 
 Qué cubren:
 
@@ -168,6 +225,8 @@ falla**: eso es intencional, es la señal de que el cambio es deliberado.
 ## 6. Comandos
 
 ```bat
+.venv\Scripts\python.exe -m buscador demo                :: datos sintéticos, sin red
+.venv\Scripts\python.exe -m buscador demo --ui           :: interfaz con esos datos
 .venv\Scripts\python.exe -m buscador ui                  :: interfaz en 127.0.0.1:8765
 .venv\Scripts\python.exe -m buscador buscar              :: corrida manual
 .venv\Scripts\python.exe -m buscador doctor              :: estado y salud
@@ -181,7 +240,9 @@ falla**: eso es intencional, es la señal de que el cambio es deliberado.
 
 ## 7. Dónde está el rendimiento, en números
 
-Del catálogo vigente (`docs/INFORME_CLASIFICACION.md` tiene el detalle completo):
+Corte histórico del 2026-11-09 con `rules-3.1.0` (`docs/INFORME_CLASIFICACION.md`
+tiene el detalle). **No describe el comportamiento de `rules-3.2.0`**: ese se mide
+al desplegar sobre datos autorizados.
 
 | Observación | Dato |
 | --- | --- |
@@ -189,7 +250,7 @@ Del catálogo vigente (`docs/INFORME_CLASIFICACION.md` tiene el detalle completo
 | La **categoría** no se reconoce en casi todo el catálogo | 2.330 ofertas sin categoría (91,6 %) |
 | La banda accionable son las 22 dudosas | frenadas por datos ausentes, no por conflicto |
 | Tres fuentes aportan el 69 % del catálogo y **ninguna** elegible | F02, F10, F03; comprobar utilidad marginal, no asumir que toda su oferta es mala |
-| Hay **405 descartadas en la familia «remoto global declarado»** | requiere muestreo: puede haber restricciones de idioma, categoría, seniority u otras; **no equivale a 405 falsos descartes** |
+| Hay **405 descartadas en la familia «remoto global declarado»** | la cifra estaba contaminada: el agrupador contaba «Berlin (remote)» como alcance global. Corregido en el informe; **no equivale a 405 falsos descartes** |
 | 9 de 10 categorías del perfil nunca producen una elegible | sólo `VA/Data Entry` llega |
 
 ## 8. Qué NO está en este repositorio, y por qué

@@ -463,6 +463,36 @@ def cmd_perfil(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_demo(args: argparse.Namespace) -> int:
+    """Modo demostración: datos sintéticos, sin red y sin tocar la base real.
+
+    La base de la demo vive en `%LOCALAPPDATA%\\BuscadorLaboral-demo` (o en
+    `BUSCADOR_DEMO_DIR`). Se apunta `BUSCADOR_DATA_DIR` antes de crear la
+    estructura para que ni la interfaz ni el trabajador puedan escribir en la
+    instalación operativa.
+    """
+    import os
+
+    from . import demo as demo_mod
+
+    base = demo_mod.rutas_demo()
+    os.environ["BUSCADOR_DATA_DIR"] = str(base)
+    os.environ["BUSCADOR_MODO_DEMO"] = "1"
+    resultado = demo_mod.preparar(base, reiniciar=args.reiniciar)
+    _imprimir({
+        "modo": "demostración (datos sintéticos, sin red)",
+        "base": resultado["base"],
+        "ofertas": resultado["ofertas"],
+        "clasificadas": resultado["clasificadas"],
+        "por_elegibilidad": resultado["por_elegibilidad"],
+        "aviso": "Estas ofertas son inventadas: no son resultados de una búsqueda real.",
+    })
+    if not args.ui:
+        print("Abrí la interfaz con: python -m buscador demo --ui")
+        return 0
+    return cmd_ui(argparse.Namespace(puerto=args.puerto, abrir=True))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="buscador", description=f"Buscador laboral local (MVP {config.VERSION_APP})"
@@ -489,6 +519,15 @@ def main(argv: list[str] | None = None) -> int:
 
     stop = sub.add_parser("stop", help="cierra el servidor local de forma ordenada")
     stop.set_defaults(func=cmd_stop)
+
+    demo = sub.add_parser(
+        "demo", help="modo demostración sin red: datos sintéticos en una base aparte")
+    demo.add_argument("--ui", action="store_true",
+                      help="abre la interfaz con los datos de ejemplo")
+    demo.add_argument("--puerto", type=int, default=config.PUERTO_PREFERIDO)
+    demo.add_argument("--reiniciar", action="store_true",
+                      help="borra la base de demostración y la vuelve a crear")
+    demo.set_defaults(func=cmd_demo)
 
     respaldar = sub.add_parser("respaldar", help="crea un respaldo verificado")
     respaldar.add_argument("--etiqueta", default="")
