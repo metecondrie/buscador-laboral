@@ -135,6 +135,12 @@ def _codigo(quien: dict) -> list[tuple[str, str]]:
 _UA_PERSONAL = re.compile(
     r'USER_AGENT = "BuscadorLaboral/0\.2 \(prototipo local; contacto: [^"]*\)"'
 )
+#: Variante local del contacto: la instalación operativa lo deja como valor por
+#: defecto en el código (`... .strip() or "correo"`). El saneado quita el
+#: fallback para que la copia publicable dependa sólo del entorno.
+_CONTACTO_PERSONAL = re.compile(
+    r'(_CONTACTO = os\.environ\.get\("BUSCADOR_CONTACTO", ""\)\.strip\(\))'
+    r' or "[^"]*"')
 _UA_SANEADO = (
     "# User agent identificable y atribución exigida por las fuentes.\n"
     "# El contacto es opcional y se define en el entorno: BUSCADOR_CONTACTO.\n"
@@ -205,6 +211,8 @@ def sanear_texto(texto: str, ruta: str, quien: dict | None = None) -> str:
     resultado = _normalizar_lineas(texto)
     if _es_config_buscador(ruta):
         resultado = _UA_PERSONAL.sub(_UA_SANEADO, resultado)
+        # El contacto local como valor por defecto también es dato personal.
+        resultado = _CONTACTO_PERSONAL.sub(lambda m: m.group(1), resultado)
     for viejo, nuevo in _sustituciones(q):
         resultado = re.sub(viejo, lambda _, reemplazo=nuevo: reemplazo, resultado)
     for viejo, nuevo in _codigo(q):
