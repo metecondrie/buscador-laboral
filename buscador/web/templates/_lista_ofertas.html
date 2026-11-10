@@ -25,6 +25,11 @@
     <span class="badge">vigencia {{ o.estado_vigencia }}</span>
     {% if o.excepcion %}<span class="badge excepcion">excepción por competencias</span>{% endif %}
     {% if o.estado_usuario %}<span class="estado {{ o.estado_usuario }}">{{ o.estado_usuario }}</span>{% endif %}
+    {% if o.postulacion_estado == 'postulada' %}
+      <span class="badge postulada">postulada {{ (o.postulacion_fecha or '')[:10] }}</span>
+    {% elif o.postulacion_estado == 'retirada' %}
+      <span class="badge">postulación retirada</span>
+    {% endif %}
     {% if o.salario and o.salario.moneda and o.salario.periodo and o.salario.periodo != 'desconocido' %}
       <span>{{ o.salario.min or '?' }}–{{ o.salario.max or '?' }} {{ o.salario.moneda }} / {{ o.salario.periodo }}</span>
     {% elif o.salario %}
@@ -54,6 +59,12 @@
       <button type="submit">{{ etiqueta }}</button>
     </form>
     {% endfor %}
+    {% if o.postulacion_estado != 'postulada' %}
+    <form method="post" action="/oferta/{{ o.id }}/postulacion">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit">Ya me postulé</button>
+    </form>
+    {% endif %}
     <a href="/oferta/{{ o.id }}"><button type="button">Ver ficha</button></a>
   </div>
 </article>

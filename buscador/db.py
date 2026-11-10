@@ -11,7 +11,7 @@ from . import config
 
 ESQUEMA = Path(__file__).with_name("schema.sql")
 MIGRACIONES = Path(__file__).with_name("migrations")
-VERSION_ESQUEMA = 10
+VERSION_ESQUEMA = 11
 
 
 def conectar(ruta: Path | None = None) -> sqlite3.Connection:
@@ -60,7 +60,13 @@ def inicializar(ruta: Path | None = None) -> Path:
 
 
 def _sembrar_ajustes(conn: sqlite3.Connection) -> None:
-    """Crea los ajustes que falten sin pisar los valores ya elegidos."""
+    """Crea los ajustes que falten sin pisar los valores ya elegidos.
+
+    Un valor **vacío** no es una elección del usuario: en una base migrada desde
+    v9 la cascada quedaba en `''` y la pantalla mostraba el campo en blanco
+    aunque el cliente usara los tres modelos por defecto. Se rellena sólo si está
+    vacío; cualquier valor escrito por el usuario se respeta tal cual.
+    """
     try:
         with transaccion(conn):
             for clave, valor in config.AJUSTES_POR_DEFECTO.items():
@@ -68,6 +74,11 @@ def _sembrar_ajustes(conn: sqlite3.Connection) -> None:
                     "INSERT OR IGNORE INTO settings (clave, valor, actualizado_en) VALUES (?,?,?)",
                     (clave, valor, config.ahora_utc()),
                 )
+            conn.execute(
+                "UPDATE settings SET valor=?, actualizado_en=? "
+                "WHERE clave='ia_cascada' AND (valor IS NULL OR TRIM(valor)='')",
+                (config.AJUSTES_POR_DEFECTO["ia_cascada"], config.ahora_utc()),
+            )
     except sqlite3.Error:
         # Una base de esquema 1 sin migrar todavía no tiene `settings`.
         pass

@@ -1,0 +1,18 @@
+{
+ "cuando": "2026-11-07T09:38:02+00:00",
+ "sha256": {
+  "base_sqlite": "3bfc231920e0124a98e947f7f4de509f81c50942269fff20fd46f3b4cf9df3ce",
+  "bytes_base": 19824640,
+  "ofertas-elegibles-dudosas.csv": "7ced92e9e00a63393386962a83de92d42a769e3913c3fb9bf9b4b1f8ad34e87c",
+  "muestra-incompatibles.csv": "67bba9644942b561cd73564cec2eb256f6806de7d789e5f75eb07e4b3984e96f",
+  "verificacion-http.json": "3fc1d6648d59c18d65e91b0a60aaed200436c8617dbc6f6021ca6daea996f64d"
+ },
+ "head_git": "a97b9b3",
+ "esquema": 11,
+ "reglas": "rules-3.0.0",
+ "ofertas": 1449,
+ "elegibles": 3,
+ "dudosas": 16,
+ "incompatibles": 1430,
+ "analisis_historicos": 5268
+}

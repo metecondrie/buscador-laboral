@@ -1,4 +1,4 @@
-PRAGMA user_version = 10;
+PRAGMA user_version = 11;
 
 CREATE TABLE IF NOT EXISTS sources (
     source_id        TEXT PRIMARY KEY,
@@ -163,6 +163,18 @@ CREATE TABLE IF NOT EXISTS analyses (
 );
 
 CREATE INDEX IF NOT EXISTS idx_analyses_run ON analyses(run_id);
+
+CREATE TABLE IF NOT EXISTS applications (
+    job_id          TEXT PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+    estado          TEXT NOT NULL DEFAULT 'postulada',
+    fecha           TEXT NOT NULL,
+    enlace          TEXT,
+    notas           TEXT,
+    creado_en       TEXT NOT NULL,
+    actualizado_en  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_applications_estado ON applications(estado, fecha);
 
 CREATE TABLE IF NOT EXISTS tasks (
     id               INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -32,3 +32,7 @@ dist/
 
 # Datos internos de la herramienta de trabajo
 .workbuddy-ai/
+.agents/
+
+# Material de trabajo con datos reales: no se versiona (queda fuera del repo)
+docs/AUDITORIA_25_OFERTAS.md

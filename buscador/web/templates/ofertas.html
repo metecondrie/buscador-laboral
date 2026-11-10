@@ -33,6 +33,14 @@
     <option value="">Con y sin excepción</option>
     <option value="1" {% if excepcion == '1' %}selected{% endif %}>Sólo excepción por competencias</option>
   </select>
+  <select name="estado">
+    <option value="">Cualquier decisión</option>
+    <option value="guardar" {% if estado == 'guardar' %}selected{% endif %}>Guardadas</option>
+    <option value="interesar" {% if estado == 'interesar' %}selected{% endif %}>Me interesa</option>
+    <option value="descartar" {% if estado == 'descartar' %}selected{% endif %}>Descartadas</option>
+    <option value="postulada" {% if estado == 'postulada' %}selected{% endif %}>Postuladas</option>
+    <option value="sin_decision" {% if estado == 'sin_decision' %}selected{% endif %}>Sin decisión</option>
+  </select>
   <select name="orden">
     <option value="score" {% if orden == 'score' %}selected{% endif %}>Mejor compatibilidad</option>
     <option value="recientes" {% if orden == 'recientes' %}selected{% endif %}>Más recientes</option>
@@ -45,9 +53,38 @@
 </form>
 {% endif %}
 
-<p class="chico"><span id="conteo-ofertas">{{ ofertas|length }} ofertas en esta vista</span>. Tope de 200 por página.</p>
+<p class="chico">
+  <span id="conteo-ofertas" data-total="{{ total if total is defined else ofertas|length }}">{{ total if total is defined else ofertas|length }} ofertas en esta vista</span>
+  {% if paginas is defined and paginas > 1 %}
+    · página {{ pagina }} de {{ paginas }} · {{ por_pagina }} por página
+  {% elif paginas is defined %}
+    · {{ por_pagina }} por página
+  {% endif %}
+</p>
+
+{% if paginas is defined and paginas > 1 %}
+<nav class="paginacion" aria-label="Páginas de ofertas">
+  {% if pagina > 1 %}
+    <a href="{{ request.url.path }}{{ query_prefijo }}pagina=1">« Primera</a>
+    <a href="{{ request.url.path }}{{ query_prefijo }}pagina={{ pagina - 1 }}">‹ Anterior</a>
+  {% endif %}
+  <span>Página {{ pagina }} de {{ paginas }}</span>
+  {% if pagina < paginas %}
+    <a href="{{ request.url.path }}{{ query_prefijo }}pagina={{ pagina + 1 }}">Siguiente ›</a>
+    <a href="{{ request.url.path }}{{ query_prefijo }}pagina={{ paginas }}">Última »</a>
+  {% endif %}
+</nav>
+{% endif %}
 
 <div id="lista-ofertas">
 {% include "_lista_ofertas.html" %}
 </div>
+
+{% if paginas is defined and paginas > 1 %}
+<nav class="paginacion" aria-label="Páginas de ofertas">
+  {% if pagina > 1 %}<a href="{{ request.url.path }}{{ query_prefijo }}pagina={{ pagina - 1 }}">‹ Anterior</a>{% endif %}
+  <span>{{ total }} ofertas · página {{ pagina }} de {{ paginas }}</span>
+  {% if pagina < paginas %}<a href="{{ request.url.path }}{{ query_prefijo }}pagina={{ pagina + 1 }}">Siguiente ›</a>{% endif %}
+</nav>
+{% endif %}
 {% endblock %}

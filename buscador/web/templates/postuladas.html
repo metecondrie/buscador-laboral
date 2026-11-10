@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block contenido %}
+<h1>Postuladas</h1>
+<p class="sub">Ofertas donde ya enviaste la postulación. La aplicación no envía nada:
+  sólo registra el hecho, la fecha y lo que quieras anotar.</p>
+
+<div class="grilla" style="margin-bottom:1.2rem">
+  <div class="kpi"><b>{{ conteo.postulada }}</b><small>postulaciones en pie</small></div>
+  <div class="kpi"><b>{{ conteo.retirada }}</b><small>retiradas (se conservan)</small></div>
+</div>
+
+{% if not postuladas %}
+  <div class="aviso">Todavía no registraste ninguna postulación. Se marca desde la
+    ficha de cada oferta o con «Ya me postulé» en la lista.</div>
+{% endif %}
+
+{% for a in postuladas %}
+<article class="card">
+  <h2><a href="/oferta/{{ a.job_id }}">{{ a.titulo }}</a></h2>
+  <div class="meta">
+    <span>{{ a.empresa or "Empresa no publicada" }}</span>
+    <span>Postulada el {{ a.fecha }}</span>
+    <span>Fuente {{ a.fuente_principal }}</span>
+    <span>vigencia {{ a.estado_vigencia }}</span>
+    {% if a.enlace %}<span><a href="{{ a.enlace }}" target="_blank" rel="noopener">enlace de la postulación</a></span>{% endif %}
+  </div>
+  {% if a.notas %}<p class="chico" style="margin:.5rem 0 0">{{ a.notas }}</p>{% endif %}
+  <div class="acciones">
+    <a href="/oferta/{{ a.job_id }}"><button type="button">Ver ficha y editar</button></a>
+  </div>
+</article>
+{% endfor %}
+
+{% if retiradas %}
+<h2>Retiradas</h2>
+<p class="chico">Se conservan para no perder el registro; podés reabrir una desde su ficha.</p>
+<table>
+  <thead><tr><th>Oferta</th><th>Empresa</th><th>Fecha</th><th>Notas</th></tr></thead>
+  <tbody>
+  {% for a in retiradas %}
+    <tr>
+      <td><a href="/oferta/{{ a.job_id }}">{{ a.titulo }}</a></td>
+      <td>{{ a.empresa or "—" }}</td>
+      <td>{{ a.fecha }}</td>
+      <td class="chico">{{ (a.notas or "")[:120] }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

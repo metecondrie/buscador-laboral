@@ -18,7 +18,7 @@
 
 <div class="barra" style="justify-content:space-between">
   <div class="meta">
-    <span>cola: {% for k, v in cola.items() %}{{ k }}={{ v }}{% if not loop.last %} · {% endif %}{% endfor %}</span>
+    <span>cola de clasificación: {{ cola.queued or 0 }} pendientes{% if cola.running %} · {{ cola.running }} en curso{% endif %}{% if cola.failed %} · {{ cola.failed }} con error{% endif %}</span>
   </div>
   <div class="acciones" style="margin:0">
     <form method="post" action="/buscar">
@@ -53,16 +53,49 @@
 {% endif %}
 
 <h2>Bandeja de avisos</h2>
+<p class="chico">
+  {{ resumen_avisos.historicos }} avisos históricos · {{ resumen_avisos.no_leidos }} sin leer ·
+  {{ resumen_avisos.leidos }} leídos · {{ resumen_avisos.vigentes }} con recomendación vigente ·
+  {{ resumen_avisos.desactualizados }} desactualizados ·
+  {{ resumen_avisos.con_puntaje_cambiado }} con puntaje anterior distinto del actual.
+  El contador de la cabecera muestra los <strong>sin leer</strong>, no los vigentes.
+</p>
 {% if avisos %}
+<p class="chico">El aviso vive en esta bandeja; nada se envió afuera. El puntaje «al avisar» es el
+  que tenía la oferta cuando se emitió el aviso; «ahora» es el del análisis vigente.</p>
 <table style="margin-bottom:1.2rem">
-  <thead><tr><th>Cuándo</th><th>Oferta</th><th>Compat.</th><th>Estado</th></tr></thead>
+  <thead><tr><th>Cuándo</th><th>Oferta</th><th>Puntaje</th><th>Elegibilidad actual</th><th>Lectura</th></tr></thead>
   <tbody>
   {% for a in avisos %}
     <tr>
-      <td>{{ a.creado_en[:16] }}{% if not a.leido_en %}<div class="chico">sin leer</div>{% endif %}</td>
-      <td><a href="/oferta/{{ a.job_id }}">{{ a.titulo }}</a><div class="chico">{{ a.empresa or '—' }}</div></td>
-      <td>{{ '%.0f'|format(a.score) if a.score is not none else '—' }}</td>
-      <td>{{ a.estado }}</td>
+      <td>{{ a.creado_en[:16] }}</td>
+      <td>
+        <a href="/oferta/{{ a.job_id }}">{{ a.titulo }}</a>
+        <div class="chico">{{ a.empresa or '—' }} · {{ a.canal }}</div>
+      </td>
+      <td>
+        {% if a.desactualizado %}
+          <span class="chico">al avisar: {{ '%.0f'|format(a.score_al_avisar) if a.score_al_avisar is not none else '—' }}</span>
+          {% if a.score_actual is not none %}
+            <div>ahora: {{ '%.0f'|format(a.score_actual) }}</div>
+          {% endif %}
+        {% elif a.cambio_puntaje %}
+          {{ '%.0f'|format(a.score_actual) }}
+          <div class="chico">al avisar: {{ '%.0f'|format(a.score_al_avisar) }}</div>
+        {% else %}
+          {{ '%.0f'|format(a.score_actual) if a.score_actual is not none else '—' }}
+        {% endif %}
+      </td>
+      <td>
+        {% if a.elegibilidad_actual %}
+          <span class="badge {{ a.elegibilidad_actual }}">{{ a.elegibilidad_actual }}</span>
+          {% if a.desactualizado %}<div class="chico">la recomendación quedó desactualizada</div>{% endif %}
+        {% else %}
+          <span class="chico">sin análisis vigente</span>
+          <div class="chico">la recomendación quedó desactualizada</div>
+        {% endif %}
+      </td>
+      <td>{% if a.leido %}leído {{ (a.leido_en or '')[:16] }}{% else %}<b>sin leer</b>{% endif %}</td>
     </tr>
   {% endfor %}
   </tbody>

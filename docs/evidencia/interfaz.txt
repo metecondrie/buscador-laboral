@@ -8,6 +8,11 @@ Verificación sobre socket real (uvicorn + HTTP):
   [ ok  ] GET /validacion · 200
   [ ok  ] GET /fuentes · 200
   [ ok  ] GET /actividad · 200
+  [ ok  ] Actividad sin volcado de datos crudos 
+  [ ok  ] Actividad muestra avisos legibles 
+  [ ok  ] Actividad distingue puntaje al avisar del vigente 
+  [ ok  ] Actividad no convierte 'delivered' en un envío externo 
+  [ ok  ] La pastilla de no leídos es un número, no una lista 
   [ ok  ] GET /diagnostico · 200
   [ ok  ] GET /historial · 200
   [ ok  ] GET /duplicados · 200
@@ -18,24 +23,25 @@ Verificación sobre socket real (uvicorn + HTTP):
   [ ok  ] Diagnóstico muestra el bloque de clasificación 
   [ ok  ] Diagnóstico no muestra diccionarios en crudo 
   [ ok  ] Diagnóstico ofrece reclasificar 
-  [ ok  ] El catálogo tiene análisis vigentes · 3 elegibles · 8 dudosas · 1288 incompatibles
-  [ ok  ] Todas las ofertas están clasificadas · 1299/1299 · 0 pendientes
+  [ ok  ] El catálogo tiene análisis vigentes · 3 elegibles · 16 dudosas · 1430 incompatibles
+  [ ok  ] Todas las ofertas están clasificadas · 1449/1449 · 0 pendientes
   [ ok  ] POST /diagnostico/reclasificar · 200
   [ ok  ] Reclasificar no altera el catálogo si la cola está vacía · sin cambios
   [ ok  ] POST /ia guardar · 200
   [ ok  ] POST /ia verificar · 200
+  [ ok  ] Guardar la configuración no altera la cascada · 3 modelos
   [ ok  ] Ofertas muestra «Buscar ahora» 
   [ ok  ] Ofertas tiene contenedor de lista incremental 
   [ ok  ] Ofertas tiene panel de progreso 
   [ ok  ] GET /static/progreso.js · 200
-  [ ok  ] GET /progreso.json sin corrida · estado completed
+  [ ok  ] GET /progreso.json sin corrida · estado cancelled
   [ ok  ] POST /buscar/ahora · búsqueda iniciada
   [ ok  ] Doble pulsación no duplica la corrida · ya hay una búsqueda en curso
-  [ ok  ] El progreso se movió durante la búsqueda · 11 estados distintos · último: 13/14 F14 · 20 clasificadas · 0 nuevas
+  [ ok  ] El progreso se movió durante la búsqueda · 12 estados distintos · último: 14/14 · 31 clasificadas · 0 nuevas
   [ ok  ] La corrida quedó cerrada, sin fantasmas · estado completed
   [ ok  ] Búsqueda terminada · estado completed · 14/14 fuentes
-  [ ok  ] Resumen final con duración y candidatas · 0 nuevas · 0 candidatas nuevas · 11 en el catálogo
-  [ ok  ] El progreso sobrevive a la recarga · run 33
+  [ ok  ] Resumen final con duración y candidatas · 0 nuevas · 0 candidatas nuevas · 19 en el catálogo
+  [ ok  ] El progreso sobrevive a la recarga · run 43
   [ ok  ] Ofertas sigue renderizando tras la búsqueda · 200
 
-37/37 comprobaciones correctas
+43/43 comprobaciones correctas

@@ -1,5 +1,5 @@
 {
-  "base_original": "78a9d7a4009bfaccbae92b9cdfeaf194f9b2af6a",
+  "base_original": "f79225d90ffe1f1759103d6ed0dd5eab591c8c26",
   "publicaciones": [
     {
       "original_desde": "",
@@ -39,6 +39,101 @@
         "omitidos": []
       },
       "cuando": "2026-11-07T04:36:38+00:00"
+    },
+    {
+      "original_hasta": "f79225d90ffe1f1759103d6ed0dd5eab591c8c26",
+      "original_desde": "78a9d7a4009bfaccbae92b9cdfeaf194f9b2af6a",
+      "commits": [
+        "f79225d feat(clasificacion): rules-3.1.0, guardia de perfil e informe reproducible del catalogo",
+        "a25c62c docs(auditoria): oportunidades laborales, falsos negativos y evidencias (07/11)",
+        "a97b9b3 test(actividad): amplía regresiones de la bandeja sin tocar el motor",
+        "0888f32 fix(actividad): bandeja legible, puntajes separados y lectura durable",
+        "621c86c docs(evidencia): pruebas e interfaz al día (318 · 35/35)",
+        "709b7f6 feat(diagnóstico): última búsqueda separada del catálogo, y documentación",
+        "7727a52 feat(motor): puntaje sólo con evidencia (rules-3.0.0) y cascada de IA persistente",
+        "cfc3810 feat(seguimiento): postulaciones reales con fecha, enlace y notas"
+      ],
+      "archivos": {
+        "aplicados": [
+          ".gitignore",
+          "buscador/config.py",
+          "buscador/db.py",
+          "buscador/diagnostics.py",
+          "buscador/ingest.py",
+          "buscador/migrations/v11.sql",
+          "buscador/notify.py",
+          "buscador/perfil_guard.py",
+          "buscador/postulaciones.py",
+          "buscador/progreso.py",
+          "buscador/schema.sql",
+          "buscador/web.py",
+          "buscador/web/static/progreso.js",
+          "buscador/web/templates/_lista_ofertas.html",
+          "buscador/web/templates/actividad.html",
+          "buscador/web/templates/base.html",
+          "buscador/web/templates/detalle.html",
+          "buscador/web/templates/diagnostico.html",
+          "buscador/web/templates/ofertas.html",
+          "buscador/web/templates/postuladas.html",
+          "buscador/worker.py",
+          "docs/ANEXO_CASOS_ANONIMIZADOS.md",
+          "docs/FASE1C_ACTIVACION_Y_RIESGOS.md",
+          "docs/FASE1_ESTADO_F05.md",
+          "docs/INFORME_CLASIFICACION.md",
+          "docs/auditoria-2026-11-07/01-informe-oportunidades.md",
+          "docs/auditoria-2026-11-07/02-falsos-negativos.md",
+          "docs/auditoria-2026-11-07/03-recomendaciones.md",
+          "docs/auditoria-2026-11-07/04-evidencia.md",
+          "docs/auditoria-2026-11-07/README.md",
+          "docs/auditoria-2026-11-07/consultas.sql",
+          "docs/auditoria-2026-11-07/datos/hashes.json",
+          "docs/auditoria-2026-11-07/datos/muestra-incompatibles.csv",
+          "docs/auditoria-2026-11-07/datos/ofertas-elegibles-dudosas.csv",
+          "docs/auditoria-2026-11-07/datos/verificacion-http.json",
+          "docs/estado.md",
+          "docs/evidencia/interfaz.txt",
+          "docs/evidencia/postulacion-reinicio.txt",
+          "docs/para-diseno.md",
+          "docs/pruebas.md",
+          "docs/puntaje.md",
+          "docs/trazabilidad.md",
+          "tests/corpus_fase1c.py",
+          "tests/fixtures/casos_reales/client_service_turkish.json",
+          "tests/fixtures/casos_reales/clinical_data_manager.json",
+          "tests/fixtures/casos_reales/data_entry_clerk.json",
+          "tests/fixtures/casos_reales/office_assistant.json",
+          "tests/fixtures/casos_reales/support_engineer_alloy.json",
+          "tests/test_actividad.py",
+          "tests/test_casos_reales.py",
+          "tests/test_clasificacion_casos_sinteticos.py",
+          "tests/test_contadores.py",
+          "tests/test_fase1_regresiones.py",
+          "tests/test_fase1b_regresiones.py",
+          "tests/test_fase1c_adversarial.py",
+          "tests/test_fase1d_regresiones.py",
+          "tests/test_fase1e_regresiones.py",
+          "tests/test_fase2b_perfil_guard.py",
+          "tests/test_ia_cascada.py",
+          "tests/test_orquestacion.py",
+          "tests/test_postulaciones.py",
+          "tests/test_puntaje_evidencia.py",
+          "tests/test_ranking_regresiones.py",
+          "tests/test_reglas_experiencia.py",
+          "tests/test_web_mvp.py",
+          "tools/informe_clasificacion.py",
+          "tools/verificar_interfaz.py"
+        ],
+        "reemplazados": [
+          "buscador/__main__.py",
+          "buscador/rules.py",
+          "docs/CONTINUIDAD.md",
+          "docs/evidencia/pytest.txt"
+        ],
+        "omitidos": [
+          "README.md"
+        ]
+      },
+      "cuando": "2026-11-10T02:31:13+00:00"
     }
   ]
 }

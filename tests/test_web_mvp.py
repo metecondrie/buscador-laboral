@@ -15,12 +15,13 @@ RUTAS = ["/ofertas", "/dudosas", "/todas", "/guardadas", "/duplicados", "/histor
          "/fuentes", "/actividad", "/config", "/diagnostico"]
 
 
-def _obs(source_id: str, ext: str, titulo: str, empresa: str, region: str) -> Observacion:
+def _obs(source_id: str, ext: str, titulo: str, empresa: str, region: str,
+         texto: str = "SQL required. Python desirable. Excel.") -> Observacion:
     return Observacion(
         source_id=source_id, external_id=ext, url=f"https://ejemplo.test/{ext}",
-        titulo=titulo, empresa=empresa, descripcion_html="<p>SQL required. Python desirable.</p>",
+        titulo=titulo, empresa=empresa, descripcion_html=f"<p>{texto}</p>",
         publicado_en="2026-11-01T00:00:00Z", region=region,
-        extra={"texto_plano": "SQL required. Python desirable. Excel."},
+        extra={"texto_plano": texto},
     )
 
 
@@ -30,7 +31,10 @@ def cliente(entorno, perfil_id):
         _obs("F01", "a", "Data Analyst", "Acme", "Anywhere in the World"),
     ]), perfil_id)
     ingest.ingestar(entorno, ResultadoFuente("F02", "success", [
-        _obs("F02", "b", "Data Analyst", "Globex", "Berlin, Germany"),
+        # Presencialidad declarada en el aviso: la región por sí sola ya no
+        # alcanza para clasificar una oferta como «onsite».
+        _obs("F02", "b", "Data Analyst", "Globex", "Berlin, Germany",
+             "SQL required. Python desirable. On-site role at the Berlin office."),
     ]), perfil_id)
     worker.procesar_tareas(entorno, "epoch-mvp")
     app = crear_app(token=TOKEN, csrf=CSRF)

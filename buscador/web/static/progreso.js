@@ -209,7 +209,10 @@
         window.setTimeout(() => { aviso.hidden = true; }, 6000);
       }
       const pie = $("#conteo-ofertas");
-      if (pie) pie.textContent = actuales + " ofertas en esta vista";
+      if (pie) {
+        const total = Number(pie.dataset.total || actuales);
+        pie.textContent = actuales + " ofertas en esta pagina · " + total + " en la vista";
+      }
       void anterior;
     } catch (e) {
       /* sin red local: la próxima consulta reintenta */

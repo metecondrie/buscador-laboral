@@ -1,7 +1,7 @@
 # Estado del proyecto
 
-Fecha: 07/11/2026. Actualizado tras la auditoría y reparación de la cola de
-clasificación.
+Fecha: 07/11/2026. Actualizado tras la estabilización funcional previa al rediseño
+(rules-3.0.0, esquema 11).
 Commit de referencia: `git log -1 --oneline`.
 
 **No declaro el MVP terminado**: el ranking ya no miente, pero la calidad real de
@@ -28,10 +28,10 @@ El perfil anterior sigue guardado como versión y se puede reactivar.
 
 | Métrica | Antes (rules-1.1 + perfil demo) | Ahora (rules-2.0 + perfil real) |
 | --- | --- | --- |
-| Ofertas evaluadas | 882 | 1 299 |
+| Ofertas evaluadas | 882 | 1 449 |
 | Elegibles | 3 | 3 |
-| Dudosas | 31 | 8 |
-| Incompatibles | 848 | 1 288 |
+| Dudosas | 31 | 16 |
+| Incompatibles | 848 | 1 430 |
 | Dejaron de ser relevantes | — | 24 |
 | Pasaron a relevantes | — | 2 |
 
@@ -84,9 +84,30 @@ Una generación real sobre una oferta real se ejecutó con costo **USD 0**:
 
 ## 5. Pruebas
 
-248 superadas. `docs/evidencia/pytest.txt`. 34 comprobaciones de interfaz sobre
-socket real en modo rápido y 37 con una búsqueda real completa
-(`tools/verificar_interfaz.py --buscar`): `docs/evidencia/interfaz.txt`.
+336 superadas. `docs/evidencia/pytest.txt`. Interfaz por socket real: 40/40 en
+modo rápido y 43/43 con búsqueda real (`tools/verificar_interfaz.py --buscar`),
+incluidas las cinco comprobaciones de Actividad. Reglas `rules-3.0.0`, esquema 11,
+cascada de IA con tres modelos.
+
+## 4 ter. Puntaje con evidencia (rules-3.0.0)
+
+Cada componente se puntúa en cuatro estados: cumplido, incumplido, desconocido y no
+aplicable. El desconocido vale **0**: se terminó el «20/20 por no contradecir».
+Fórmula y comparación antes/después en `docs/puntaje.md`.
+
+## 4 quater. Postulaciones
+
+`applications` (esquema 11): una fila por oferta con fecha, enlace y notas.
+«Me interesa» y «postulada» son estados distintos. Se retira sin borrar y el
+historial queda en `user_events`. La aplicación nunca envía una postulación.
+
+## 4 quinquies. Bandeja de Actividad
+
+`notify.bandeja()` entrega registros con título, empresa, fecha, lectura,
+elegibilidad actual y enlace a la ficha. El puntaje histórico (`score_al_avisar`)
+se distingue del vigente (`score_actual`); un aviso deja de presentarse como
+recomendación si el análisis actual ya no es elegible. `delivered` es estado
+interno de la bandeja, no un envío externo.
 
 ## 4 bis. Búsqueda manual con progreso
 

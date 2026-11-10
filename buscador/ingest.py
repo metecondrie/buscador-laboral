@@ -8,6 +8,7 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 
 from . import config, db
+from .rules import DIAS_VIGENCIA_RAZONABLE
 from .adapters.base import Observacion, ResultadoFuente
 from .adapters import metadatos
 from .textutil import hash_semantico, hash_texto, normalizar
@@ -424,11 +425,25 @@ def _encolar_clasificacion(conn: sqlite3.Connection, job_id: str, profile_versio
 
 
 def _vigencia(obs: Observacion) -> str:
+    """`open`, `closed` o `unknown`, con la misma regla que las reglas de puntaje.
+
+    Antes, cualquier aviso con fecha de publicación quedaba `open` para siempre:
+    una fuente conserva el aviso viejo y la aplicación lo mostraba como vigente.
+    Ahora un aviso de más de `DIAS_VIGENCIA_RAZONABLE` días sin fecha de cierre es
+    `unknown`: sigue listado, pero no se afirma que esté abierto.
+    """
     expira = obs.extra.get("expira_en")
-    if not expira:
-        return "open" if obs.publicado_en else "unknown"
+    if expira:
+        try:
+            dt = datetime.fromisoformat(str(expira).replace("Z", "+00:00"))
+        except ValueError:
+            return "unknown"
+        return "open" if dt > datetime.now(timezone.utc) else "closed"
+    if not obs.publicado_en:
+        return "unknown"
     try:
-        dt = datetime.fromisoformat(str(expira).replace("Z", "+00:00"))
+        publicado = datetime.fromisoformat(str(obs.publicado_en).replace("Z", "+00:00"))
     except ValueError:
         return "unknown"
-    return "open" if dt > datetime.now(timezone.utc) else "closed"
+    dias = (datetime.now(timezone.utc) - publicado).days
+    return "open" if dias <= DIAS_VIGENCIA_RAZONABLE else "unknown"

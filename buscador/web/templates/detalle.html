@@ -53,6 +53,54 @@
     {% endif %}
   </div>
   <p class="sub" style="margin:.8rem 0 0">“Me interesa” no significa candidatura enviada: la aplicación no postula.</p>
+
+  <h3>Seguimiento de la postulación</h3>
+  {% if oferta.postulacion and oferta.postulacion.estado == 'postulada' %}
+    <div class="aviso bien" style="margin-bottom:.6rem">
+      Postulada el <strong>{{ oferta.postulacion.fecha }}</strong>.
+      {% if oferta.postulacion.enlace %}· <a href="{{ oferta.postulacion.enlace }}" target="_blank" rel="noopener">enlace</a>{% endif %}
+      {% if oferta.postulacion.notas %}· {{ oferta.postulacion.notas }}{% endif %}
+    </div>
+  {% elif oferta.postulacion %}
+    <div class="aviso" style="margin-bottom:.6rem">
+      Postulación <strong>retirada</strong> (registrada el {{ oferta.postulacion.fecha }}).
+      Podés volver a registrarla abajo.
+    </div>
+  {% else %}
+    <p class="chico">Todavía no registraste una postulación para esta oferta.</p>
+  {% endif %}
+
+  <form method="post" action="/oferta/{{ oferta.id }}/postulacion" class="barra" style="align-items:flex-end">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div>
+      <label for="fecha">Fecha de postulación</label>
+      <input id="fecha" type="date" name="fecha" value="{{ oferta.postulacion.fecha if oferta.postulacion else '' }}">
+    </div>
+    <div style="flex:1 1 220px">
+      <label for="enlace">Enlace de la postulación (opcional)</label>
+      <input id="enlace" type="text" name="enlace" size="30"
+             value="{{ oferta.postulacion.enlace or '' }}" placeholder="https://…">
+    </div>
+    <div style="flex:1 1 260px">
+      <label for="notas">Notas (opcional)</label>
+      <input id="notas" type="text" name="notas" size="40"
+             value="{{ oferta.postulacion.notas or '' }}" placeholder="a quién, por dónde, qué te dijeron…">
+    </div>
+    <button class="primario" type="submit">
+      {{ 'Actualizar postulación' if oferta.postulacion and oferta.postulacion.estado == 'postulada' else 'Registrar postulación' }}
+    </button>
+  </form>
+  {% if oferta.postulacion and oferta.postulacion.estado == 'postulada' %}
+  <form method="post" action="/oferta/{{ oferta.id }}/postulacion/retirar" style="margin-top:.4rem">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="peligro" type="submit">Retirar postulación</button>
+  </form>
+  {% endif %}
+  {% if oferta.historial_postulacion %}
+  <p class="chico" style="margin-top:.5rem">Historial:
+    {% for h in oferta.historial_postulacion %}{{ h.accion }} {{ h.creado_en[:16] }}{% if not loop.last %} · {% endif %}{% endfor %}
+  </p>
+  {% endif %}
 </div>
 
 <div class="card">

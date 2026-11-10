@@ -648,6 +648,26 @@ def clasificar(conn: sqlite3.Connection, tarea: dict, perfil: dict,
     job = conn.execute("SELECT * FROM jobs WHERE id=?", (tarea["job_id"],)).fetchone()
     if job is None:
         raise ValueError(f"oferta inexistente: {tarea['job_id']}")
+    # --- Fase 2A: integridad del historial ---------------------------------
+    # 1) Una tarea encolada para otra versión de reglas no debe escribir sobre
+    #    el catálogo vigente (quedan tareas viejas tras un rollback).
+    reglas_tarea = tarea.get("rules_version") or config.RULES_VERSION
+    if reglas_tarea != config.RULES_VERSION:
+        return {"omitida": "tarea de otra versión de reglas", "reglas": reglas_tarea}
+    # 2) Nunca resucitar una fila que un ROLLBACK marcó obsoleta. La señal no es
+    #    `obsoleto=1` a secas: una invalidación normal (observación nueva,
+    #    cambio de perfil) también aparta la fila y DEBE poder reclasificarse.
+    #    Es rollback si la oferta ya tiene un análisis VIGENTE de otra versión de
+    #    reglas. Se mira por oferta y no por la clave exacta de la tarea: una
+    #    tarea rezagada puede traer otro `job_version_id` y, sin esta guardia,
+    #    crearía una fila nueva de la versión revertida (Fase 2B).
+    otra_epoca = conn.execute(
+        "SELECT COUNT(*) FROM analyses WHERE job_id=? AND obsoleto=0 AND rules_version<>?",
+        (tarea["job_id"], config.RULES_VERSION),
+    ).fetchone()[0]
+    if otra_epoca:
+        return {"omitida": "hay un análisis vigente de otra versión (rollback); "
+                           "no se resucita"}
     obs = conn.execute(
         """SELECT o.* FROM observations o
            JOIN job_observations jo ON jo.observation_id = o.id
@@ -694,7 +714,9 @@ def clasificar(conn: sqlite3.Connection, tarea: dict, perfil: dict,
                    elegibilidad=excluded.elegibilidad, score=excluded.score,
                    componentes_json=excluded.componentes_json, razones_json=excluded.razones_json,
                    incertidumbres_json=excluded.incertidumbres_json,
-                   creado_en=excluded.creado_en, obsoleto=0, excepcion=excluded.excepcion,
+                   -- Fase 2A: creado_en es historia, no se reescribe al reproducir
+                   -- una tarea tras una interrupción. Sólo se refresca el veredicto.
+                   creado_en=analyses.creado_en, obsoleto=0, excepcion=excluded.excepcion,
                    confianza=excluded.confianza,
                    motivo_elegibilidad=excluded.motivo_elegibilidad,
                    run_id=excluded.run_id""",

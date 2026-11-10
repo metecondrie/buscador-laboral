@@ -69,6 +69,7 @@
   .badge.confianza-media { background: #fdf0d5; color: var(--duda); }
   .badge.confianza-baja { background: #f6e3e3; color: var(--no); }
   .badge.remote { background: #e3f0e8; color: var(--ok); }
+  .badge.postulada { background: #e8ecf7; color: #2b3f7a; }
   .badge.onsite { background: #f6e3e3; color: var(--no); }
   table { width: 100%; border-collapse: collapse; background: var(--panel);
           border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; font-size: .86rem; }
@@ -89,6 +90,9 @@
   footer { color: var(--suave); font-size: .78rem; text-align: center; padding: 1.5rem; }
   code { background: #eef1f4; padding: .05rem .28rem; border-radius: 4px; font-size: .85em; }
   .chico { font-size: .78rem; color: var(--suave); }
+  .paginacion { display: flex; gap: .8rem; align-items: center; flex-wrap: wrap;
+                margin: .7rem 0; font-size: .9rem; }
+  .paginacion a { white-space: nowrap; }
 
   /* Búsqueda manual: panel, barra de progreso y contadores. */
   .busqueda { background: var(--panel); border: 1px solid var(--borde); border-radius: 10px;
@@ -128,11 +132,12 @@
     <a href="/dudosas">Dudosas</a>
     <a href="/todas">Todas</a>
     <a href="/guardadas">Guardadas</a>
+    <a href="/postuladas">Postuladas</a>
     <a href="/validacion">Validación</a>
     <a href="/duplicados">Duplicados{% if duplicados %}<span class="pill">{{ duplicados }}</span>{% endif %}</a>
     <a href="/historial">Historial</a>
     <a href="/fuentes">Fuentes{% if incidentes %}<span class="pill rojo">{{ incidentes }}</span>{% endif %}</a>
-    <a href="/actividad">Actividad{% if avisos %}<span class="pill">{{ avisos }}</span>{% endif %}</a>
+    <a href="/actividad" title="{{ avisos_historicos|int }} avisos históricos · {{ avisos_no_leidos|int }} sin leer · {{ avisos_vigentes_sin_leer|int }} vigentes sin leer">Actividad{% if avisos_no_leidos|int > 0 %}<span class="pill">{{ avisos_no_leidos|int }}</span>{% endif %}</a>
     <a href="/config">Configuración</a>
     <a href="/diagnostico">Diagnóstico</a>
   </nav>

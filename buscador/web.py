@@ -10,6 +10,7 @@ import threading
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import quote, urlencode
 
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
@@ -17,7 +18,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import (adapters, ai, backups, config, db, diagnostics, incidents, logs, merge,
-               notify, progreso, queue, rules, scheduler, validacion, verify, worker)
+               notify, postulaciones, progreso, queue, rules, scheduler, validacion,
+               verify, worker)
 
 PLANTILLAS = Path(__file__).with_name("web") / "templates"
 ESTATICOS = Path(__file__).with_name("web") / "static"
@@ -102,12 +104,20 @@ def crear_app(token: str | None = None, csrf: str | None = None,
         return bool(valor) and hmac.compare_digest(valor, app.state.csrf)
 
     def contexto(request: Request, **extra) -> dict:
-        base = {"request": request, "csrf": app.state.csrf, "avisos": 0, "perfil_demo": False,
+        # `avisos_no_leidos` es un entero para la pastilla de la cabecera. No se
+        # llama `avisos`: en /actividad ese nombre es la lista de la bandeja y la
+        # plantilla base terminaba volcando dicts de Python en el navegador.
+        base = {"request": request, "csrf": app.state.csrf, "avisos_no_leidos": 0,
+                "avisos_vigentes_sin_leer": 0, "avisos_historicos": 0,
+                "perfil_demo": False,
                 "version_app": config.VERSION_APP, "incidentes": 0, "duplicados": 0,
                 "tareas": app.state.tareas}
         try:
             with conn() as c:
-                base["avisos"] = notify.no_leidos(c)
+                resumen = notify.resumen_bandeja(c)
+                base["avisos_no_leidos"] = resumen["no_leidos"]
+                base["avisos_vigentes_sin_leer"] = resumen["vigentes_sin_leer"]
+                base["avisos_historicos"] = resumen["historicos"]
                 base["incidentes"] = len(incidents.abiertos(c))
                 base["duplicados"] = merge.contar_pendientes(c)
                 perfil = c.execute(
@@ -117,38 +127,70 @@ def crear_app(token: str | None = None, csrf: str | None = None,
         except sqlite3.Error:
             pass
         base.update(extra)
+        # Defensa final: ninguna ruta puede convertir la pastilla en una lista.
+        # El bug histórico fue que /actividad pasaba `avisos=<lista>` y la
+        # plantilla compartida imprimía el repr de los diccionarios. Aunque las
+        # claves ya están separadas, se valida el tipo antes de renderizar.
+        if not isinstance(base.get("avisos_no_leidos"), int):
+            with conn() as c:
+                base["avisos_no_leidos"] = notify.no_leidos(c)
+        for clave in ("avisos_vigentes_sin_leer", "avisos_historicos"):
+            if not isinstance(base.get(clave), int):
+                base[clave] = 0
         return base
 
     def fuentes_para_filtro(c: sqlite3.Connection) -> list[dict]:
         return [dict(f) for f in c.execute("SELECT source_id, nombre FROM sources ORDER BY source_id").fetchall()]
 
     def consultar_ofertas(where: str, params: tuple = (), orden: str = "score",
-                          limite: int = 200) -> list[dict]:
+                          limite: int = 200, offset: int = 0) -> list[dict]:
+        # `j.id` al final: dos ofertas con el mismo puntaje y la misma fecha
+        # deben conservar un orden estable entre páginas, o la paginación
+        # repetiría o perdería registros.
         ordenes = {
-            "score": "a.score DESC, j.publicado_en DESC",
-            "recientes": "j.publicado_en DESC, a.score DESC",
-            "fuente": "j.fuente_principal, a.score DESC",
-            "empresa": "j.empresa, a.score DESC",
-            "antiguedad": "j.primera_deteccion DESC",
+            "score": "a.score DESC, j.publicado_en DESC, j.id ASC",
+            "recientes": "j.publicado_en DESC, a.score DESC, j.id ASC",
+            "fuente": "j.fuente_principal, a.score DESC, j.id ASC",
+            "empresa": "j.empresa, a.score DESC, j.id ASC",
+            "antiguedad": "j.primera_deteccion DESC, j.id ASC",
         }
         sql = f"""
             SELECT j.*, a.elegibilidad, a.score, a.razones_json, a.incertidumbres_json,
                    a.componentes_json, a.rules_version, a.excepcion, a.confianza,
                    a.motivo_elegibilidad,
-                   (SELECT accion FROM user_events u WHERE u.job_id=j.id ORDER BY u.id DESC LIMIT 1) AS estado_usuario,
+                   (SELECT CASE WHEN u.accion='deshacer' THEN NULL ELSE u.accion END
+                      FROM user_events u WHERE u.job_id=j.id ORDER BY u.id DESC LIMIT 1) AS estado_usuario,
+                   (SELECT ap.estado FROM applications ap WHERE ap.job_id=j.id) AS postulacion_estado,
+                   (SELECT ap.fecha FROM applications ap WHERE ap.job_id=j.id) AS postulacion_fecha,
                    (SELECT COUNT(*) FROM job_observations jo WHERE jo.job_id=j.id) AS fuentes_vinculadas
             FROM jobs j
             JOIN analyses a ON a.job_id=j.id AND a.obsoleto=0
             WHERE {where} AND j.merged_into IS NULL
             ORDER BY {ordenes.get(orden, ordenes['score'])}
-            LIMIT {int(limite)}
+            LIMIT ? OFFSET ?
         """
         with conn() as c:
-            filas = c.execute(sql, params).fetchall()
+            filas = c.execute(sql, (*params, int(limite), int(offset))).fetchall()
         return [_preparar(dict(f)) for f in filas]
 
+    def contar_ofertas(where: str, params: tuple = ()) -> int:
+        with conn() as c:
+            return int(c.execute(
+                f"""SELECT COUNT(*) FROM jobs j
+                    JOIN analyses a ON a.job_id=j.id AND a.obsoleto=0
+                    WHERE {where} AND j.merged_into IS NULL""",
+                params,
+            ).fetchone()[0])
+
+    #: Última decisión del usuario que cuenta como "guardada/interesada".
+    ULTIMA_DECISION = """j.id IN (
+        SELECT e.job_id FROM user_events e
+        WHERE e.id = (SELECT MAX(id) FROM user_events WHERE job_id=e.job_id)
+          AND e.accion IN ({}) )"""
+
     def filtros_ofertas(request: Request, elegibilidad: str | None, titulo: str,
-                        nota: str | None = None) -> HTMLResponse:
+                        nota: str | None = None,
+                        decisiones: tuple[str, ...] | None = None) -> HTMLResponse:
         q = request.query_params.get("q", "").strip()
         categoria = request.query_params.get("categoria", "").strip()
         fuente = request.query_params.get("fuente", "").strip()
@@ -157,12 +199,23 @@ def crear_app(token: str | None = None, csrf: str | None = None,
         vigencia = request.query_params.get("vigencia", "").strip()
         excepcion = request.query_params.get("excepcion", "").strip()
         estado = request.query_params.get("estado", "").strip()
+        try:
+            pagina = max(1, int(request.query_params.get("pagina", "1")))
+        except ValueError:
+            pagina = 1
+        por_pagina = 50
 
         condiciones = []
         params: list = []
         if elegibilidad:
             condiciones.append("a.elegibilidad=?")
             params.append(elegibilidad)
+        if decisiones:
+            # Sólo la ÚLTIMA decisión manda: guardar → deshacer no cuenta como
+            # guardada, y guardar → descartar tampoco.
+            marcas = ",".join("?" for _ in decisiones)
+            condiciones.append(ULTIMA_DECISION.format(marcas))
+            params.extend(decisiones)
         if q:
             condiciones.append("(j.titulo LIKE ? OR j.empresa LIKE ?)")
             params += [f"%{q}%", f"%{q}%"]
@@ -180,24 +233,45 @@ def crear_app(token: str | None = None, csrf: str | None = None,
             params.append(vigencia)
         if excepcion == "1":
             condiciones.append("a.excepcion=1")
-        if estado:
+        if estado in ("guardar", "interesar", "descartar"):
+            condiciones.append(ULTIMA_DECISION.format("?"))
+            params.append(estado)
+        elif estado == "postulada":
             condiciones.append(
-                """j.id IN (SELECT e.job_id FROM user_events e
-                            WHERE e.id = (SELECT MAX(id) FROM user_events WHERE job_id=e.job_id)
-                            AND e.accion IN ('guardar','interesar','descartar'))"""
+                "EXISTS (SELECT 1 FROM applications ap WHERE ap.job_id=j.id AND ap.estado='postulada')"
+            )
+        elif estado == "sin_decision":
+            condiciones.append(
+                "NOT EXISTS (SELECT 1 FROM user_events u WHERE u.job_id=j.id)"
             )
         if not condiciones:
             condiciones.append("1=1")
 
-        filas = consultar_ofertas(" AND ".join(condiciones), tuple(params), orden)
+        where = " AND ".join(condiciones)
+        parametros = tuple(params)
+        total = contar_ofertas(where, parametros)
+        paginas = max(1, (total + por_pagina - 1) // por_pagina)
+        pagina = min(pagina, paginas)
+        filas = consultar_ofertas(where, parametros, orden,
+                                  limite=por_pagina, offset=(pagina - 1) * por_pagina)
         with conn() as c:
             fuentes = fuentes_para_filtro(c)
+
+        # Los enlaces de paginación conservan TODOS los filtros y el orden.
+        actuales = {k: v for k, v in (
+            ("q", q), ("categoria", categoria), ("fuente", fuente),
+            ("modalidad", modalidad), ("orden", orden), ("vigencia", vigencia),
+            ("excepcion", excepcion), ("estado", estado),
+        ) if v}
+        query_prefijo = "?" + (urlencode(actuales) + "&" if actuales else "")
         return templates.TemplateResponse(
             request, "ofertas.html",
             contexto(request, titulo=titulo, ofertas=filas, q=q, categoria=categoria,
                      fuente=fuente, modalidad=modalidad, orden=orden, vigencia=vigencia,
                      excepcion=excepcion, estado=estado, categorias=rules.CATEGORIAS,
                      fuentes=fuentes, modalidades=MODALIDADES, filtros=True, busqueda=True,
+                     total=total, pagina=pagina, paginas=paginas, por_pagina=por_pagina,
+                     query_prefijo=query_prefijo, decisiones=decisiones or (),
                      nota=nota or "Ordenadas por compatibilidad profesional, luego vigencia y modalidad. "
                                   "El puntaje no es una probabilidad de contratación."),
         )
@@ -227,7 +301,9 @@ def crear_app(token: str | None = None, csrf: str | None = None,
     def guardadas(request: Request):
         return filtros_ofertas(
             request, None, "Guardadas y de interés",
-            nota="Ofertas donde tu última decisión fue guardar o marcar interés.",
+            nota="Ofertas donde tu última decisión fue guardar o marcar interés. "
+                 "Las postulaciones tienen su propia pestaña.",
+            decisiones=("guardar", "interesar"),
         )
 
     @app.get("/oferta/{job_id}", response_class=HTMLResponse)
@@ -237,7 +313,9 @@ def crear_app(token: str | None = None, csrf: str | None = None,
                 """SELECT j.*, a.elegibilidad, a.score, a.razones_json, a.incertidumbres_json,
                           a.componentes_json, a.rules_version, a.excepcion,
                           a.confianza, a.motivo_elegibilidad,
-                          (SELECT accion FROM user_events u WHERE u.job_id=j.id ORDER BY u.id DESC LIMIT 1) AS estado_usuario
+                          (SELECT accion FROM user_events u WHERE u.job_id=j.id ORDER BY u.id DESC LIMIT 1) AS estado_usuario,
+                          (SELECT ap.estado FROM applications ap WHERE ap.job_id=j.id) AS postulacion_estado,
+                          (SELECT ap.fecha FROM applications ap WHERE ap.job_id=j.id) AS postulacion_fecha
                    FROM jobs j LEFT JOIN analyses a ON a.job_id=j.id AND a.obsoleto=0 WHERE j.id=?""",
                 (job_id,),
             ).fetchone()
@@ -259,7 +337,12 @@ def crear_app(token: str | None = None, csrf: str | None = None,
                    FROM job_versions WHERE job_id=? ORDER BY id DESC LIMIT 20""",
                 (job_id,),
             ).fetchall()
+        with conn() as c:
+            postulacion = postulaciones.obtener(c, job_id)
+            historial_postulacion = postulaciones.historial(c, job_id)
         oferta = _preparar(dict(fila))
+        oferta["postulacion"] = postulacion
+        oferta["historial_postulacion"] = historial_postulacion
         oferta["observaciones"] = [dict(o) for o in observaciones]
         oferta["eventos"] = [dict(e) for e in eventos]
         oferta["versiones"] = [dict(v) for v in versiones]
@@ -290,6 +373,40 @@ def crear_app(token: str | None = None, csrf: str | None = None,
         if not destino.startswith("/") or destino.startswith("//"):
             destino = f"/oferta/{job_id}"
         return RedirectResponse(destino, status_code=303)
+
+    # --- postulaciones ---------------------------------------------------
+    @app.post("/oferta/{job_id}/postulacion")
+    def postular(request: Request, job_id: str, csrf: str = Form(""), fecha: str = Form(""),
+                 enlace: str = Form(""), notas: str = Form("")):
+        """Anota que ya se envió la postulación. No envía nada por su cuenta."""
+        if not csrf_ok(csrf):
+            return PlainTextResponse("CSRF inválido", status_code=400)
+        with conn() as c:
+            try:
+                postulaciones.registrar(c, job_id, fecha, enlace, notas)
+            except LookupError:
+                return PlainTextResponse("Oferta inexistente", status_code=404)
+        return RedirectResponse(f"/oferta/{job_id}", status_code=303)
+
+    @app.post("/oferta/{job_id}/postulacion/retirar")
+    def retirar_postulacion(request: Request, job_id: str, csrf: str = Form("")):
+        if not csrf_ok(csrf):
+            return PlainTextResponse("CSRF inválido", status_code=400)
+        with conn() as c:
+            postulaciones.retirar(c, job_id)
+        return RedirectResponse(f"/oferta/{job_id}", status_code=303)
+
+    @app.get("/postuladas", response_class=HTMLResponse)
+    def postuladas(request: Request):
+        with conn() as c:
+            filas = postulaciones.listar(c, "postulada")
+            retiradas = postulaciones.listar(c, "retirada", limite=50)
+            conteo = postulaciones.contar(c)
+        return templates.TemplateResponse(
+            request, "postuladas.html",
+            contexto(request, titulo="Postuladas", postuladas=filas,
+                     retiradas=retiradas, conteo=conteo),
+        )
 
     # --- validación humana del ranking -----------------------------------
     @app.get("/validacion", response_class=HTMLResponse)
@@ -426,6 +543,7 @@ def crear_app(token: str | None = None, csrf: str | None = None,
             por_fuente = [dict(r) for r in c.execute(
                 "SELECT * FROM source_runs ORDER BY id DESC LIMIT 25").fetchall()]
             avisos = notify.bandeja(c, 50)
+            resumen_avisos = notify.resumen_bandeja(c)
             cola = queue.contar(c)
             totales = {
                 "ofertas": c.execute("SELECT COUNT(*) FROM jobs").fetchone()[0],
@@ -437,7 +555,7 @@ def crear_app(token: str | None = None, csrf: str | None = None,
         return templates.TemplateResponse(
             request, "actividad.html",
             contexto(request, titulo="Actividad", corridas=corridas, por_fuente=por_fuente,
-                     avisos=avisos, cola=cola, totales=totales, busqueda=busqueda,
+                     avisos=avisos, resumen_avisos=resumen_avisos, cola=cola, totales=totales, busqueda=busqueda,
                      incidentes_abiertos=abiertos, tarea=app.state.tareas["corrida"]),
         )
 

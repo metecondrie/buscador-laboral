@@ -40,6 +40,9 @@ aprobador de etapa es el usuario; la revisión independiente sigue pendiente.
 | Verificación de fuentes | `docs/evidencia/fuentes-verificacion.json` |
 | Pruebas | `docs/evidencia/pytest.txt` |
 | Búsqueda manual (diseño y alternativa descartada) | `docs/busqueda-manual.md` |
+| Puntaje: fórmula y comparación antes/después | `docs/puntaje.md` |
+| Guía para el agente de diseño | `docs/para-diseno.md` |
+| Evidencia de postulación tras reiniciar | `docs/evidencia/postulacion-reinicio.txt` |
 | Incidente de la cola de clasificación | `docs/incidente-cola-clasificacion.md` |
 | Interfaz por socket real | `docs/evidencia/interfaz.txt` |
 | Prueba de IA sobre una oferta real | `docs/evidencia/ia-oferta-real.txt` |

@@ -12,8 +12,8 @@ from pathlib import Path
 
 import uvicorn
 
-from . import (adapters, ai, backups, config, db, diagnostics, incidents, queue,
-               scheduler, validacion, verify, worker)
+from . import (adapters, ai, backups, config, db, diagnostics, incidents,
+               perfil_guard, queue, scheduler, validacion, verify, worker)
 from .ai.cliente import Cliente
 from .web import crear_app
 
@@ -263,13 +263,26 @@ def cmd_reclasificar(args: argparse.Namespace) -> int:
     conn = db.conectar(rutas.db)
     try:
         perfil = worker.asegurar_perfil(conn, rutas)
+        # Fase 2A: NO invalidar todos los análisis. Con la misma versión de
+        # reglas, el INSERT ... ON CONFLICT DO UPDATE reescribía
+        # componentes_json/razones_json/creado_en de la fila histórica y la
+        # devolvía a obsoleto=0: se perdía el historial. Sólo se aparta lo que
+        # pertenece a OTRA versión de reglas; el resto se conserva intacto.
         with db.transaccion(conn):
-            conn.execute("UPDATE analyses SET obsoleto=1")
-        encoladas = worker.reclasificar_todo(conn, perfil["id"])
-        procesadas = worker.procesar_tareas(conn, "reclasificacion-manual")
-        print(json.dumps({"perfil": perfil["version"], "encoladas": encoladas,
-                          "procesadas": procesadas, "reglas": config.RULES_VERSION},
-                         ensure_ascii=False))
+            cur = conn.execute(
+                "UPDATE analyses SET obsoleto=1 "
+                "WHERE obsoleto=0 AND rules_version<>?",
+                (config.RULES_VERSION,),
+            )
+        apartados = cur.rowcount
+        # Encola únicamente las ofertas que quedaron sin análisis vigente y
+        # drena la cola (determinista, sin red, sin IA, sin avisos externos).
+        resultado = worker.reclasificar_faltantes(conn)
+        print(json.dumps({"perfil": perfil["version"], "apartados_por_version": apartados,
+                          "faltantes": resultado.get("faltantes", 0),
+                          "encoladas_ahora": resultado.get("encoladas_ahora", 0),
+                          "procesadas": resultado.get("procesadas", 0),
+                          "reglas": config.RULES_VERSION}, ensure_ascii=False))
     finally:
         conn.close()
     return 0
@@ -411,14 +424,35 @@ def cmd_perfil(args: argparse.Namespace) -> int:
     try:
         if args.real:
             from . import perfil as perfil_mod
-
-            perfil = worker.guardar_perfil(conn, rutas, perfil_mod.perfil(rutas),
+            # Fase 2A: el origen canónico es profile_versions.activo=1. PERFIL_EJEMPLO
+            # declara B2 y `nivel` por habilidad; aplicarlo sin control cambia los
+            # veredictos en silencio. Se valida ANTES de escribir perfil.json.
+            propuesto = perfil_mod.perfil(rutas)
+            try:
+                perfil_guard.validar_reemplazo(
+                    perfil_guard.perfil_activo(conn), propuesto)
+            except perfil_guard.ReemplazoPerfilBloqueado as exc:
+                print("perfil --real BLOQUEADO; no se escribió nada.", file=sys.stderr)
+                for motivo in exc.diferencias:
+                    print("  - " + motivo, file=sys.stderr)
+                print("Usá un perfil equivalente al activo o una autorización explícita.",
+                      file=sys.stderr)
+                return 2
+            perfil = worker.guardar_perfil(conn, rutas, propuesto,
                                            origen=perfil_mod.ORIGEN)
             print(f"Perfil real {perfil['version']} aplicado; "
                   f"{perfil['encoladas']} ofertas reencoladas.")
             return 0
         if args.importar:
             datos = json.loads(Path(args.importar).read_text(encoding="utf-8"))
+            try:
+                perfil_guard.validar_reemplazo(
+                    perfil_guard.perfil_activo(conn), datos)
+            except perfil_guard.ReemplazoPerfilBloqueado as exc:
+                print("perfil --importar BLOQUEADO; no se escribió nada.", file=sys.stderr)
+                for motivo in exc.diferencias:
+                    print("  - " + motivo, file=sys.stderr)
+                return 2
             perfil = worker.guardar_perfil(conn, rutas, datos, origen="importado")
             print(f"Perfil {perfil['version']} aplicado; {perfil['encoladas']} ofertas reencoladas.")
             return 0

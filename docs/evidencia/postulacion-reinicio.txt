@@ -1,0 +1,34 @@
+Copia de la base real en: <RUTA_DEL_USUARIO>\AppData\Local\Temp\demo-postulacion-lycrlowg
+
+{
+ "proceso": "A — registra",
+ "oferta": "🌍 Materials Scientist (Nanoparticle Sizing & Lot Release), Remote- Contract",
+ "guardado": {
+  "job_id": "job_00036955d651ae4083e8",
+  "estado": "postulada",
+  "fecha": "2026-11-07",
+  "enlace": "https://ejemplo.test/postulacion",
+  "notas": "enviada por el portal, sin respuesta",
+  "creado_en": "2026-11-07T05:58:01Z",
+  "actualizado_en": "2026-11-07T05:58:01Z"
+ }
+}
+{
+ "proceso": "B — proceso nuevo, relee",
+ "recuperado": {
+  "job_id": "job_00036955d651ae4083e8",
+  "estado": "postulada",
+  "fecha": "2026-11-07",
+  "enlace": "https://ejemplo.test/postulacion",
+  "notas": "enviada por el portal, sin respuesta",
+  "creado_en": "2026-11-07T05:58:01Z",
+  "actualizado_en": "2026-11-07T05:58:01Z"
+ },
+ "conteo": {
+  "postulada": 1,
+  "retirada": 0
+ }
+}
+
+El proceso A terminó (salida 0 ) y B arrancó de cero (salida 0 ):
+la postulación, la fecha, el enlace y las notas sobreviven al reinicio.

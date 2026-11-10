@@ -72,10 +72,18 @@ def test_presencial_fuera_de_zona_es_incompatible():
 
 
 def test_presencial_en_la_plata_queda_dudoso():
+    """La región local sola ya no presume presencialidad: queda `unknown`.
+
+    Con evidencia explícita de presencialidad sí se mantiene «onsite»; en ambos
+    casos la oferta sigue siendo dudosa para el perfil (requiere remoto).
+    """
     e = evaluar(region="La Plata, Buenos Aires", texto="We need SQL and Excel.")
     assert e.elegibilidad == "doubtful"
-    assert e.modalidad == "onsite"
+    assert e.modalidad == "unknown"
     assert e.motivo_elegibilidad
+    con_evidencia = evaluar(region="La Plata, Buenos Aires",
+                            texto="On-site role. We need SQL and Excel.")
+    assert con_evidencia.modalidad == "onsite"
 
 
 # 4. «Software Engineer Infrastructure» caía en VA/Data Entry por «data entry».

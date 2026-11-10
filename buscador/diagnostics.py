@@ -25,6 +25,74 @@ def _miles(numero: int) -> str:
     return f"{numero:,}".replace(",", " ")
 
 
+def ultima_busqueda(conn: sqlite3.Connection) -> dict:
+    """Cifras **de la última corrida**, separadas del acumulado del catálogo.
+
+    Mezclarlas era el problema: «1 299 ofertas» es el catálogo y «825 revisadas»
+    es lo que bajó la última búsqueda. No son la misma magnitud y no se suman.
+    """
+    run = conn.execute("SELECT * FROM runs ORDER BY id DESC LIMIT 1").fetchone()
+    if run is None:
+        return {"hay": False}
+
+    desde = run["started_at"]
+    fuentes = {
+        fila["estado"]: fila["n"]
+        for fila in conn.execute(
+            "SELECT estado, COUNT(*) AS n FROM source_runs WHERE run_id=? GROUP BY estado",
+            (run["id"],),
+        ).fetchall()
+    }
+    revisadas = conn.execute(
+        "SELECT COALESCE(SUM(observaciones),0) FROM source_runs WHERE run_id=?",
+        (run["id"],)).fetchone()[0]
+    avisos_nuevos = conn.execute(
+        "SELECT COALESCE(SUM(nuevas),0) FROM source_runs WHERE run_id=?",
+        (run["id"],)).fetchone()[0]
+    duplicadas = conn.execute(
+        "SELECT COALESCE(SUM(duplicadas),0) FROM source_runs WHERE run_id=?",
+        (run["id"],)).fetchone()[0]
+    ofertas_nuevas = conn.execute(
+        "SELECT COUNT(*) FROM jobs WHERE primera_deteccion>=?", (desde,)).fetchone()[0]
+    errores_fuente = conn.execute(
+        """SELECT COUNT(*) FROM source_runs WHERE run_id=?
+           AND estado NOT IN ('success','empty_valid','partial','pending','running','cancelled')""",
+        (run["id"],)).fetchone()[0]
+    clasificadas = conn.execute(
+        "SELECT COUNT(*) FROM analyses WHERE run_id=?", (run["id"],)).fetchone()[0]
+
+    return {
+        "hay": True,
+        "run_id": run["id"],
+        "causa": run["causa"],
+        "estado": run["estado"],
+        "iniciada": run["started_at"],
+        "finalizada": run["finished_at"],
+        "fuentes_ok": sum(fuentes.get(e, 0) for e in ("success", "empty_valid", "partial")),
+        "fuentes_error": errores_fuente,
+        "fuentes_total": sum(fuentes.values()),
+        "revisadas": int(revisadas),
+        "avisos_nuevos": int(avisos_nuevos),
+        "ofertas_nuevas": int(ofertas_nuevas),
+        "duplicadas": int(duplicadas),
+        "clasificadas": int(clasificadas),
+    }
+
+
+def errores_clasificacion(conn: sqlite3.Connection) -> dict:
+    """Tareas de clasificación que quedaron fallidas, con su último error."""
+    total = conn.execute(
+        "SELECT COUNT(*) FROM tasks WHERE estado='failed'").fetchone()[0]
+    ultimo = conn.execute(
+        "SELECT error, actualizado_en FROM tasks WHERE estado='failed'"
+        " ORDER BY id DESC LIMIT 1").fetchone()
+    return {
+        "fallidas": total,
+        "ultimo_error": (ultimo["error"] if ultimo else None),
+        "ultima_vez": (ultimo["actualizado_en"] if ultimo else None),
+    }
+
+
 def clasificacion(conn: sqlite3.Connection) -> dict:
     """Estado del catálogo clasificado, en números que se puedan leer.
 
@@ -46,6 +114,9 @@ def clasificacion(conn: sqlite3.Connection) -> dict:
     tareas = queue.contar(conn)
     pendientes = (tareas.get("queued", 0) + tareas.get("deferred", 0)
                   + tareas.get("running", 0))
+    # Marca de la última corrida: separa «ofertas nuevas» de «históricas».
+    fila_corrida = conn.execute("SELECT started_at FROM runs ORDER BY id DESC LIMIT 1").fetchone()
+    hoy = fila_corrida["started_at"] if fila_corrida else None
     ultima = conn.execute(
         "SELECT MAX(creado_en) AS marca FROM analyses WHERE obsoleto=0").fetchone()
     perfil = conn.execute(
@@ -61,7 +132,11 @@ def clasificacion(conn: sqlite3.Connection) -> dict:
         "dudosas": por_elegibilidad.get("doubtful", 0),
         "incompatibles": por_elegibilidad.get("incompatible", 0),
         "analisis_historicos": conn.execute("SELECT COUNT(*) FROM analyses").fetchone()[0],
+        "ofertas_historicas": conn.execute(
+            "SELECT COUNT(*) FROM jobs WHERE primera_deteccion < ?",
+            (hoy or "",)).fetchone()[0] if hoy else max(ofertas - analizadas, 0),
         "tareas": dict(tareas),
+        "errores_clasificacion": errores_clasificacion(conn)["fallidas"],
         "tareas_texto": " · ".join(
             f"{_miles(n)} {ETIQUETAS_TAREA.get(estado, estado)}"
             for estado, n in sorted(tareas.items(), key=lambda par: -par[1])
@@ -117,6 +192,8 @@ def resumen(conn: sqlite3.Connection, rutas: config.Rutas | None = None) -> dict
             "ultima_corrida": ultima,
         },
         "clasificacion": clasificacion(conn),
+        "ultima_busqueda": ultima_busqueda(conn),
+        "errores_clasificacion": errores_clasificacion(conn),
         "disco": {"libre_gb": round(espacio.free / 1024 ** 3, 1),
                   "total_gb": round(espacio.total / 1024 ** 3, 1)},
         "fuentes": incidents.salud_por_fuente(conn),

@@ -3,15 +3,14 @@
 Documento de traspaso. Cualquier sesión (Astra, DeepSeek o quien siga) debe poder
 retomar el trabajo leyendo sólo esto y `docs/estado.md`.
 
-- **Última actualización:** 07/11/2026, auditoría y reparación de la cola de
-  clasificación.
+- **Última actualización:** 07/11/2026, bandeja de Actividad legible con
+  regresiones ampliadas y estabilización funcional previa al rediseño.
 - **Rama:** `main`. `h1-paralelo` se conserva intacta.
 - **Commit de referencia:** ver `git log -1 --oneline`.
-- **Estado:** el buscador funciona y **ya no sobrevalora** ofertas. Sobre 1 280
-  ofertas quedan 3 elegibles y 8 dudosas. Se puede lanzar la búsqueda desde
-  **Ofertas → Buscar ahora** y ver el avance real. Falta que el usuario valide la muestra
-  de 25 en la pestaña **Validación**. La IA **funciona** con la clave guardada: una
-  generación real sobre una oferta costó USD 0. El procesamiento masivo sigue
+- **Estado:** estable para recibir al agente de diseño. Sobre 1 449 ofertas
+  (suben con cada búsqueda): 3 elegibles, 16 dudosas, 1 430 incompatibles, 0
+  pendientes de clasificar. Reglas `rules-3.0.0`, esquema 11. Falta que el usuario
+  valide la muestra de 25 en **Validación**. El procesamiento masivo de IA sigue
   apagado a propósito.
 
 ---
@@ -19,16 +18,16 @@ retomar el trabajo leyendo sólo esto y `docs/estado.md`.
 ## 1. Cómo ejecutar
 
 ```bat
-cd "C:\ruta\donde\clonaste\buscador-laboral"
+cd "<RUTA_DEL_USUARIO>\WorkBuddy AI\buscad0r"
 .venv\Scripts\python.exe -m buscador ui            :: interfaz
 .venv\Scripts\python.exe -m buscador buscar        :: corrida
 .venv\Scripts\python.exe -m buscador reclasificar  :: recalcular todo
 .venv\Scripts\python.exe -m buscador doctor        :: estado y salud
-.venv\Scripts\python.exe -m pytest tests -q        :: 208 pruebas
+.venv\Scripts\python.exe -m pytest tests -q        :: 336 pruebas
 .venv\Scripts\python.exe -m buscador validacion     :: progreso de la revisión
 .venv\Scripts\python.exe -m buscador ia --diagnosticar :: estado real de la clave
 .venv\Scripts\python.exe tools\prueba_ia_oferta.py  :: 1 oferta, cuota gratuita
-.venv\Scripts\python.exe tools\verificar_interfaz.py :: 17 comprobaciones HTTP
+.venv\Scripts\python.exe tools\verificar_interfaz.py :: 40 HTTP (43 con --buscar)
 ```
 
 Aplicar o volver a aplicar el perfil real:
@@ -41,17 +40,13 @@ Aplicar o volver a aplicar el perfil real:
 
 ## 2. Qué está implementado y verificado
 
-### Perfil (rules-2.0.0)
+### Perfil real (rules-2.0.0)
 
-`buscador/perfil.py` publica sólo la **estructura** y un perfil de ejemplo sin
-datos personales. El perfil real se carga desde `data/perfil.local.json` o desde
-`Configuración`, siempre fuera del repositorio.
-
-Reglas que el perfil expresa como configuración, no como datos: remoto
-**obligatorio** (`territorio.remoto_obligatorio`), zona presencial admitida
-(`territorio.presencial`), y salarios marcados `pendiente_ratificacion`.
-
+`buscador/perfil.py` construye el perfil desde `la memoria personal`. Remoto
+**obligatorio** por una restricción declarada; presencial fuera de La Plata = incompatible.
 Habilidades ponderadas por nivel (demostrada 1,0 / intermedia 0,7 / básica 0,4).
+Formación sin finalizar, sin títulos declarados. Salarios del plan marcados
+`pendiente_ratificacion`.
 
 ### Tres dimensiones separadas
 
@@ -82,6 +77,67 @@ Dudosa y un comentario, y las métricas (precisión, falsos positivos, falsos
 negativos) se calculan solas. Las respuestas sobreviven a cualquier
 reclasificación. También por consola: `buscador validacion` y
 `buscador validacion --exportar docs/muestra-validacion.csv`.
+
+### Estabilización funcional (07/11, antes del rediseño)
+
+Seis frentes, todos con pruebas. Detalle en `docs/puntaje.md` y
+`docs/para-diseno.md`.
+
+**1. Cascada de IA.** Volvía a mostrar un solo modelo. La causa no fue una
+migración: `tools/verificar_interfaz.py` enviaba el formulario de IA con una
+cascada de un modelo y, en cada verificación, reducía la configuración real. Ahora
+el predeterminado son los tres modelos (`config.CASCADA_INICIAL`), el valor vacío
+se rellena al inicializar (una base migrada desde v9 lo tenía en blanco) y un
+valor elegido por el usuario sobrevive a cualquier reinicio. La herramienta
+reenvía la cascada que ya está guardada y comprueba que no cambie.
+
+**2. Puntaje (`rules-3.0.0`).** Se daban 20/20 de experiencia y 15/15 de
+idioma/formación por «no encontrar contradicción». Ahora cada componente tiene
+cuatro estados —cumplido, incumplido, desconocido, no aplicable— y el desconocido
+vale 0. Ver `docs/puntaje.md`.
+
+**3. Territorio y vigencia.** El alcance territorial se declara (`mundial`,
+`argentina`, `internacional`, `restringido`, `desconocido`) y una restricción en el
+cuerpo («must be eligible to live and work in the US») gana sobre un «Anywhere in
+the World» de la fuente. Los viajes y la reubicación se evalúan. Un aviso de más
+de 45 días sin cierre ya no se declara abierto.
+
+**4. Casos reales como regresión.** Los cinco avisos reportados están guardados
+con su texto original en `tests/fixtures/casos_reales/` y cubiertos por
+`tests/test_casos_reales.py`.
+
+**5. Postulaciones.** Tabla `applications` (esquema 11), una fila por oferta:
+fecha, enlace y notas. «Me interesa» y «ya me postulé» son estados distintos. Se
+edita, se retira (sin borrar) y todo cambio deja historial en `user_events`.
+Nunca se envía nada.
+
+**6. Contadores.** Diagnóstico separa **última búsqueda** (revisadas, nuevas,
+duplicadas, fuentes con error) del **catálogo** (elegibles, dudosas,
+incompatibles, históricas, análisis vigentes y pendientes, errores de
+clasificación). `tests/test_contadores.py` compara cada cifra con su consulta.
+
+### Actividad: bandeja legible (07/11)
+
+La pestaña volcaba literales de Python en la cabecera. **Causa:** `base.html`
+usaba `{{ avisos }}` para la pastilla de no leídos (un entero), pero en
+`/actividad` ese mismo nombre es la **lista** de la bandeja: el contexto local
+pisaba el contador y se imprimían todos los diccionarios con `payload_json`,
+`clave` y `estado`. Se renombró a `avisos_no_leidos` en `contexto()` y la plantilla.
+
+Los dos puntajes de una misma oferta no eran un error de cálculo: el payload
+guarda el puntaje **al emitir el aviso** y `analyses` el **vigente**. El volcado
+los mostraba juntos sin etiqueta. `notify.bandeja()` ahora devuelve registros
+legibles y separados: `score_al_avisar` (inmutable) y `score_actual`; si la
+elegibilidad vigente ya no es `eligible`, el aviso se marca **desactualizado** y
+no se presenta como recomendación actual.
+
+`delivered` significa «está en la bandeja local»: no es un correo, un mensaje
+externo ni una postulación enviada. La interfaz ya no muestra esa palabra; dice
+«bandeja local» y el estado de lectura. 18 pruebas en `tests/test_actividad.py`
+cubren renderizado, persistencia tras reiniciar (incluido un proceso nuevo),
+deduplicación por clave, marcado como leído (con CSRF e idempotencia), la
+pastilla del nav, la cola con etiquetas, que despachar no inicia procesos y que
+leer un aviso no toca las postulaciones.
 
 ### Cola de clasificación: la deuda se paga (incidente 07/11)
 
@@ -167,7 +223,7 @@ en `docs/ia-proveedores.md`.
 - **Una generación real** sobre una oferta real, con costo USD 0 y tope de una
   llamada: 1 969 + 480 tokens, 4 citas verificadas, 0 inventadas
   (`docs/evidencia/ia-oferta-real.txt`).
-- Interfaz por socket real: **30/30** con búsqueda real incluida
+- Interfaz por socket real: **40/40** en modo rápido y **43/43** con búsqueda real incluida
   (`docs/evidencia/interfaz.txt`): botón, panel, arranque, doble pulsación, avance
   con 12 estados distintos, cancelación en vuelo y resumen final.
 
@@ -194,7 +250,7 @@ en `docs/ia-proveedores.md`.
 - H3 (CV por oferta, CRM) y H4 (salarios): **no** se avanzó, por instrucción.
 - Prueba de instalación en PC limpia.
 
-## 5. Bloqueos que necesitan intervención del usuario
+## 5. Bloqueos que necesitan intervención de el usuario
 
 1. **Validación de la muestra.** Sin sus veredictos, el ranking sigue siendo una
    hipótesis bien argumentada.

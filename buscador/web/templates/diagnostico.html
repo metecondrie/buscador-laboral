@@ -57,14 +57,40 @@
   <a href="/fuentes"><button type="button">Ver fuentes</button></a>
 </div>
 
+<h2>Última búsqueda</h2>
+{% if datos.ultima_busqueda.hay %}
+<table style="margin-bottom:1.2rem">
+  <tbody>
+    <tr><th>Corrida</th><td>#{{ datos.ultima_busqueda.run_id }} · {{ datos.ultima_busqueda.causa }}
+        · <strong>{{ datos.ultima_busqueda.estado }}</strong>
+        · {{ datos.ultima_busqueda.iniciada[:16] }}
+        {% if datos.ultima_busqueda.finalizada %}→ {{ datos.ultima_busqueda.finalizada[:16] }}{% endif %}</td></tr>
+    <tr><th>Fuentes</th><td>{{ datos.ultima_busqueda.fuentes_ok }} correctas ·
+        {{ datos.ultima_busqueda.fuentes_error }} con error ·
+        {{ datos.ultima_busqueda.fuentes_total }} planificadas</td></tr>
+    <tr><th>Revisadas en esa corrida</th><td>{{ datos.ultima_busqueda.revisadas }} avisos ·
+        {{ datos.ultima_busqueda.ofertas_nuevas }} ofertas nuevas ·
+        {{ datos.ultima_busqueda.duplicadas }} duplicadas ·
+        {{ datos.ultima_busqueda.clasificadas }} clasificadas</td></tr>
+  </tbody>
+</table>
+<p class="chico">Estas cifras son de esa corrida. No se suman al catálogo de abajo.</p>
+{% else %}
+<p class="aviso">Todavía no corrió ninguna búsqueda.</p>
+{% endif %}
+
 <h2>Clasificación</h2>
 <table style="margin-bottom:1.2rem">
   <tbody>
-    <tr><th>Ofertas guardadas</th><td>{{ datos.clasificacion.ofertas }}</td></tr>
+    <tr><th>Ofertas guardadas</th><td>{{ datos.clasificacion.ofertas }}
+        <span class="chico">{{ datos.clasificacion.ofertas_historicas }} de antes de la última búsqueda</span></td></tr>
     <tr><th>Analizadas (vigentes)</th><td>{{ datos.clasificacion.analizadas }}
         {% if datos.clasificacion.sin_analisis %} · faltan {{ datos.clasificacion.sin_analisis }}{% endif %}</td></tr>
     <tr><th>Pendientes en cola</th><td>{{ datos.clasificacion.pendientes }}
         <span class="chico">{{ datos.clasificacion.tareas_texto }}</span></td></tr>
+    <tr><th>Errores de clasificación</th><td>{{ datos.clasificacion.errores_clasificacion }}
+        {% if datos.errores_clasificacion.ultimo_error %}
+        <span class="chico">{{ datos.errores_clasificacion.ultimo_error[:120] }}</span>{% endif %}</td></tr>
     <tr><th>Elegibles / dudosas / incompatibles</th>
         <td>{{ datos.clasificacion.elegibles }} / {{ datos.clasificacion.dudosas }} /
             {{ datos.clasificacion.incompatibles }}</td></tr>

@@ -14,7 +14,7 @@ from pathlib import Path
 
 APP_NOMBRE = "BuscadorLaboral"
 VERSION_APP = "0.2.0"
-RULES_VERSION = "rules-2.0.0"
+RULES_VERSION = "rules-3.1.0"
 AGRUPACION_VERSION = "identidad-1.1.0"
 
 HOST_LOCAL = "127.0.0.1"
@@ -42,13 +42,21 @@ RESPALDOS_A_CONSERVAR = 14
 DIAS_INCIDENTE_ABIERTO = 7
 
 # Ajustes por defecto persistidos en la tabla `settings`.
+#
+# La cascada arranca con los tres modelos gratuitos soportados. Vive acá como
+# texto y no importada de `ai.proveedores` para no crear un ciclo de imports;
+# `tests/test_ia_cascada.py` comprueba que coincida con `CASCADA_POR_DEFECTO`.
+CASCADA_INICIAL = ("gemini:gemini-3.5-flash-lite,"
+                   "gemini:gemini-3.6-flash,"
+                   "gemini:gemini-3.8-flash")
+
 AJUSTES_POR_DEFECTO = {
     "intervalo_horas": str(INTERVALO_HORAS),
     "corrida_automatica": "0",
     "resolver_experiencia_por_competencias": "1",
     "notificar_escritorio": "0",
     "ia_habilitada": "0",
-    "ia_cascada": "",
+    "ia_cascada": CASCADA_INICIAL,
     "ia_proveedores_habilitados": "gemini",
     "ia_presupuesto_usd": "0",
     "ia_autorizo_pago": "0",

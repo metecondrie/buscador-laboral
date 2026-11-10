@@ -115,17 +115,27 @@ def _fuentes(conn: sqlite3.Connection, run: dict) -> dict:
                 and f["estado"] not in ("pending", "running", "cancelled")]
 
     total = run.get("total_fuentes") or len(detalle)
-    hechas = len(completadas) + len(fallidas) + len(canceladas)
+    exitosas = len(completadas)
+    fallidas_n = len(fallidas)
+    canceladas_n = len(canceladas)
+    # «Procesada» = llegó a un estado final. Pero una fuente cancelada NUNCA fue
+    # consultada: contarla como trabajo hecho es lo que hacía mostrar 14/14 y
+    # 100 % en una corrida donde sólo se consultó una fuente.
+    con_resultado = exitosas + fallidas_n
     return {
         "total": total,
         "pendientes": len(pendientes),
         "ejecutando": len(ejecutando),
-        "completadas": len(completadas),
-        "fallidas": len(fallidas),
-        "canceladas": len(canceladas),
-        "procesadas": hechas,
-        # Sólo fuentes con estado final: la barra no avanza por tiempo.
-        "fraccion": round(hechas / total, 4) if total else 0.0,
+        "completadas": exitosas,
+        "exitosas": exitosas,
+        "fallidas": fallidas_n,
+        "canceladas": canceladas_n,
+        "sin_consultar": canceladas_n + len(pendientes),
+        "consultadas": con_resultado + len(ejecutando),
+        "con_resultado": con_resultado,
+        "procesadas": con_resultado + canceladas_n,
+        # La barra mide fuentes con resultado real, no estados finales.
+        "fraccion": round(con_resultado / total, 4) if total else 0.0,
         "actual": (ejecutando[0]["source_id"] if ejecutando else None),
         "actual_nombre": (ejecutando[0]["nombre"] if ejecutando else None),
         "detalle": detalle,
@@ -242,27 +252,41 @@ def _ia(conn: sqlite3.Connection, run: dict | None = None) -> dict:
 
 def _resumen(conn: sqlite3.Connection, run: dict, fuentes: dict, ofertas: dict) -> dict:
     guardado = _json(run.get("resumen_json"))
-    if guardado:
-        return guardado
-    # Corrida en curso o interrumpida: se arma con lo que hay, sin inventar.
-    errores = [
-        {"source_id": f["source_id"], "nombre": f["nombre"],
-         "motivo": f.get("error_code") or f["estado"]}
-        for f in fuentes["detalle"]
-        if f["estado"] not in ESTADOS_OK
-        and f["estado"] not in ("pending", "running", "cancelled")
-    ]
-    return {
-        # Una corrida interrumpida igual informa cuánto duró.
+    base = {
         "duracion_ms": _delta_ms(run.get("started_at"), run.get("finished_at")),
-        "fuentes_procesadas": fuentes["procesadas"],
         "fuentes_total": fuentes["total"],
-        "errores": errores,
+        "fuentes_procesadas": fuentes["procesadas"],
+        "fuentes_consultadas": fuentes["consultadas"],
+        "fuentes_con_resultado": fuentes["con_resultado"],
+        "fuentes_ok": fuentes["exitosas"],
+        "fuentes_fallidas": fuentes["fallidas"],
+        "fuentes_canceladas": fuentes["canceladas"],
+        "sin_consultar": fuentes["sin_consultar"],
+        "errores": [
+            {"source_id": f["source_id"], "nombre": f["nombre"],
+             "motivo": f.get("error_code") or f["estado"]}
+            for f in fuentes["detalle"]
+            if f["estado"] not in ESTADOS_OK
+            and f["estado"] not in ("pending", "running", "cancelled")
+        ],
         "nuevas": ofertas["nuevas"],
         "candidatas": ofertas["elegibles"] + ofertas["dudosas"],
         "candidatas_nuevas": ofertas["elegibles_nuevas"] + ofertas["dudosas_nuevas"],
-        "incompletas": True,
+        "elegibles": ofertas["elegibles"],
+        "dudosas": ofertas["dudosas"],
     }
+    if guardado:
+        # Los resúmenes guardados por versiones anteriores no traen la
+        # separación; se completa con lo que hoy se puede leer de source_runs.
+        base.update(guardado)
+        base.setdefault("fuentes_consultadas", fuentes["consultadas"])
+        base.setdefault("fuentes_canceladas", fuentes["canceladas"])
+        base.setdefault("fuentes_con_resultado", fuentes["con_resultado"])
+        base.setdefault("sin_consultar", fuentes["sin_consultar"])
+        return base
+    # Corrida en curso o interrumpida: se arma con lo que hay, sin inventar.
+    base["incompletas"] = True
+    return base
 
 
 def snapshot(conn: sqlite3.Connection, run_id: int | None = None) -> dict:
@@ -290,8 +314,10 @@ def snapshot(conn: sqlite3.Connection, run_id: int | None = None) -> dict:
             "iniciada": None,
             "duracion_ms": None,
             "fuentes": {"total": 0, "pendientes": 0, "ejecutando": 0, "completadas": 0,
-                        "fallidas": 0, "canceladas": 0, "procesadas": 0, "fraccion": 0.0,
-                        "actual": None, "actual_nombre": None, "detalle": []},
+                        "exitosas": 0, "fallidas": 0, "canceladas": 0, "sin_consultar": 0,
+                        "consultadas": 0, "con_resultado": 0, "procesadas": 0,
+                        "fraccion": 0.0, "actual": None, "actual_nombre": None,
+                        "detalle": []},
             "ofertas": {"revisadas": 0, "nuevas": 0, "duplicadas": 0, "elegibles": 0,
                         "dudosas": 0, "incompatibles": 0, "elegibles_nuevas": 0,
                         "dudosas_nuevas": 0, "clasificadas": 0,

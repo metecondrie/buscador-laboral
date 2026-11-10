@@ -95,6 +95,27 @@ def main() -> int:
                 cuerpo = r.read().decode("utf-8", errors="replace")
                 anotar(f"GET {ruta}", r.status == 200 and "Internal Server Error" not in cuerpo,
                        str(r.status))
+                if ruta == "/actividad":
+                    # La pastilla de la cabecera usaba el mismo nombre que la lista
+                    # de avisos: en esta pestaña volcaba dicts de Python al HTML.
+                    anotar("Actividad sin volcado de datos crudos",
+                           all(crudo not in cuerpo for crudo in
+                               ("payload_json", "estado_db", "delivered", "&#39;clave&#39;")),
+                           "")
+                    anotar("Actividad muestra avisos legibles",
+                           "Remote Office Assistant" in cuerpo
+                           and "/oferta/job_" in cuerpo
+                           and ("sin leer" in cuerpo or "leído" in cuerpo),
+                           "")
+                    anotar("Actividad distingue puntaje al avisar del vigente",
+                           "al avisar" in cuerpo and "Elegibilidad actual" in cuerpo,
+                           "")
+                    anotar("Actividad no convierte 'delivered' en un envío externo",
+                           "delivered" not in cuerpo and "bandeja local" in cuerpo
+                           and "nada se envió afuera" in cuerpo, "")
+                    anotar("La pastilla de no leídos es un número, no una lista",
+                           "&#39;creado_en&#39;" not in cuerpo
+                           and "score_al_avisar" not in cuerpo, "")
 
         try:  # sólo POST: 405 es lo correcto, urllib lo trata como error
             with abridor.open(f"{base}/ia", timeout=5) as r:
@@ -164,8 +185,18 @@ def main() -> int:
 
             # Acciones que no tocan credenciales reales: guardar configuración y
             # verificar modelos (consulta sólo el catálogo del proveedor).
+            #
+            # `guardar` reenvía la cascada **que ya está guardada**: una versión
+            # anterior mandaba una cascada de un solo modelo y, con cada
+            # verificación, reducía la configuración real del usuario. El
+            # formulario se prueba igual (ida y vuelta), sin cambiar nada.
+            conexion = db.conectar(rutas.db)
+            try:
+                cascada_actual = db.ajuste(conexion, "ia_cascada", "")
+            finally:
+                conexion.close()
             for accion, campos in (
-                ("guardar", {"cascada": "gemini:gemini-3.5-flash-lite",
+                ("guardar", {"cascada": cascada_actual,
                              "presupuesto": "0", "limite_llamadas": "20",
                              "datos": "0", "cache": "1", "proveedores": ["gemini"]}),
                 ("verificar", {"proveedor": "gemini"}),
@@ -174,6 +205,15 @@ def main() -> int:
                 datos = urllib.parse.urlencode(carga, doseq=True).encode()
                 with abridor.open(f"{base}/ia", data=datos, timeout=30) as r:
                     anotar(f"POST /ia {accion}", r.status == 200, str(r.status))
+
+            conexion = db.conectar(rutas.db)
+            try:
+                cascada_despues = db.ajuste(conexion, "ia_cascada", "")
+            finally:
+                conexion.close()
+            anotar("Guardar la configuración no altera la cascada",
+                   cascada_despues == cascada_actual,
+                   f"{len(cascada_despues.split(',')) if cascada_despues else 0} modelos")
 
             # --- búsqueda manual con progreso -----------------------------
             with abridor.open(f"{base}/ofertas", timeout=10) as r:

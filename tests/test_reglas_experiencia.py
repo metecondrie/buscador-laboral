@@ -64,7 +64,11 @@ def test_seniority_intermedio_declarado_va_a_dudosas():
 def test_modalidad_remota_se_detecta():
     assert evaluar(region="Remote worldwide").modalidad == "remote"
     assert evaluar(region=None, texto="This is a fully remote role. SQL required.").modalidad == "remote"
-    assert evaluar(region="La Plata, Argentina").modalidad == "onsite"
+    # Una región es territorio, no modalidad: sin evidencia explícita queda
+    # «unknown» (antes se infería «onsite» y se descartaba la oferta).
+    assert evaluar(region="La Plata, Argentina").modalidad == "unknown"
+    assert evaluar(region="La Plata, Argentina",
+                   texto="On-site role. SQL required.").modalidad == "onsite"
     assert evaluar(region=None, texto="SQL required.").modalidad == "unknown"
 
 
