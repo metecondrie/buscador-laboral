@@ -92,11 +92,18 @@ def test_office_assistant_no_saca_cien_por_no_contradecir():
 # --- 2. Remote Data Entry Clerk (NoGigiddy) ---------------------------------
 
 def test_data_entry_clerk_queda_con_puntaje_bajo_y_honesto():
-    """Antes: 100,0. El aviso menciona una sola habilidad y no declara experiencia."""
+    """Antes: 100,0 y elegible. Hoy: puntaje bajo y vigencia sin confirmar.
+
+    V01: el aviso se publicó el 2025-11-11 y no declara cierre. La antigüedad no
+    prueba que esté cerrado, pero tampoco hay evidencia de que siga abierto: va a
+    revisión con el motivo a la vista, nunca a `eligible` por inercia.
+    """
     e = evaluar("data_entry_clerk")
 
     assert e.categoria == "VA/Data Entry"
-    assert e.elegibilidad == "eligible"
+    assert e.vigencia == "stale"
+    assert e.elegibilidad == "doubtful"
+    assert any("vigencia sin confirmar" in i for i in e.incertidumbres)
     assert e.compatibilidad is not None
     assert e.compatibilidad <= 50
     assert componente(e, "experiencia").estado == "sin_datos"

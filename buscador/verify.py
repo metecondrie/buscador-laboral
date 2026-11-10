@@ -33,7 +33,12 @@ def _oferta_desde_observacion(obs: Observacion) -> dict:
         "seniority": obs.seniority,
         "salario": obs.salario,
         "publicado_en": obs.publicado_en,
-        "tipo_contrato": obs.categoria_fuente,
+        # C04: la categoría de la fuente y el tipo de contrato son campos
+        # distintos. Antes la categoría viajaba como `tipo_contrato` y se leía
+        # como si describiera la modalidad de trabajo.
+        "categoria_fuente": obs.categoria_fuente,
+        "skills": obs.skills,
+        "tipo_contrato": obs.extra.get("tipo_contrato"),
     }
 
 

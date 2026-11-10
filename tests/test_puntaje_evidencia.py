@@ -225,7 +225,9 @@ def test_vigencia_separa_publicacion_de_disponibilidad():
     reciente = evaluar(publicado_en="2026-11-05T00:00:00Z")
     viejo = evaluar(publicado_en="2025-06-01T00:00:00Z")
     assert reciente.vigencia == "open"
-    assert viejo.vigencia == "unknown"      # la fuente lo conserva, no está vigente
+    # V01: `stale` es un estado propio: ni abierto sin evidencia ni cerrado por
+    # antigüedad. La fuente lo conserva y la oferta va a revisión.
+    assert viejo.vigencia == "stale"
     assert viejo.requisitos["publicado_en"] == "2025-06-01T00:00:00Z"
 
 

@@ -38,7 +38,7 @@ PERFIL = {
     "habilidades": [
         {"nombre": "SQL", "nivel": "demostrada"},
         {"nombre": "Python", "nivel": "demostrada"},
-        {"nombre": "Excel", "nivel": "demotrada"},
+        {"nombre": "Excel", "nivel": "demostrada"},
     ],
     "idioma": {"ingles": "B2", "espanol": "nativo"},
     "experiencia": {"anios": 1, "nivel": "junior"},
@@ -118,13 +118,13 @@ def test_zona_horaria_en_el_cuerpo_excluye():
 # --- Caso C · el cuerpo contradice a la fuente ------------------------------
 
 
-def test_cuerpo_mundial_no_contradice_a_la_fuente():
-    """[FP · abierto] La fuente manda: el cuerpo «Worldwide» no la corrige.
+def test_cuerpo_mundial_contradice_a_la_fuente_y_va_a_revision():
+    """[T01 · corregido] Contradicción campo/cuerpo: duda explícita, no descarte.
 
-    Este es el modo de falla con más volumen detrás (405 ofertas con alcance
-    global declarado que aun así se descartan). Si una mejora decide que el
-    cuerpo puede contradecir a la fuente, esta prueba es la que hay que
-    cambiar, y el anexo junto con ella.
+    Antes la etiqueta «United States» descartaba la oferta aunque el aviso dijera
+    «Worldwide ... open to applicants from all countries», y la contradicción no
+    quedaba registrada en ninguna parte. Ahora el conflicto se nombra y la oferta
+    va a revisión: ni se acepta sola ni se tira por la etiqueta.
     """
     e = evaluar(
         titulo="Customer Support Specialist",
@@ -132,10 +132,10 @@ def test_cuerpo_mundial_no_contradice_a_la_fuente():
         texto=("SQL required. Excel required. This is a Worldwide Remote position "
                "open to applicants from all countries."),
     )
-    assert e.elegibilidad == "incompatible"
-    assert any("United States" in t for t in razones_de(e, "territorio", "excluye"))
-    # Y no queda rastro de la contradicción en las razones.
-    assert not razones_de(e, "territorio", "duda")
+    assert e.elegibilidad == "doubtful"
+    assert any("contradictorios" in t for t in razones_de(e, "territorio", "duda"))
+    assert any("United States" in t for t in razones_de(e, "territorio", "duda"))
+    assert not razones_de(e, "territorio", "excluye")
 
 
 # --- Caso D · híbrido fuera de la zona --------------------------------------
@@ -244,14 +244,12 @@ def test_idioma_no_declarado_no_puntua():
     assert any("no declara el nivel" in t for t in razones_de(e, "idioma", "duda"))
 
 
-def test_aviso_corto_no_genera_razon_de_idioma():
-    """[FP · abierto] Con poco texto no se detecta el idioma dominante.
+def test_aviso_corto_deja_trazabilidad_de_idioma_no_evaluado():
+    """[L01 · corregido] El idioma no evaluado se declara, no se omite.
 
-    `_idioma_del_aviso` necesita texto suficiente para reconocer inglés. Un
-    aviso corto queda en «desconocido» y **no** genera ninguna razón de idioma:
-    ni exige nivel ni lo pide. Es decir, la banda dudosa se puebla sólo con los
-    avisos que tienen suficiente texto, y los avisos más escuetos pasan sin
-    dejar rastro de que su idioma nunca se evaluó.
+    `_idioma_del_aviso` necesita texto suficiente para reconocer inglés. Antes un
+    aviso corto no dejaba ninguna razón: parecía que el idioma lo había aprobado.
+    Ahora queda «idioma no evaluado» a la vista, sin bloquear la oferta.
     """
     corto = evaluar(
         titulo="Customer Support Specialist",
@@ -263,7 +261,7 @@ def test_aviso_corto_no_genera_razon_de_idioma():
                "support specialist to join our team."),
     )
     assert not razones_de(corto, "idioma", "excluye")
-    assert not razones_de(corto, "idioma", "duda")
+    assert any("idioma no evaluado" in t for t in razones_de(corto, "idioma", "duda"))
     assert razones_de(largo, "idioma", "duda")
 
 

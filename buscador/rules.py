@@ -210,13 +210,23 @@ _PISTAS: list[tuple[str, tuple[str, ...], tuple[str, ...]]] = [
     ("VA/Data Entry", ("virtual assistant", "data entry", "asistente virtual",
                       "administrative assistant", "asistente administrativo",
                       "office assistant", "back office"),
-     ()),  # sin pistas de cuerpo: «data entry» suelto no alcanza
+     # Fase 1F · C03: el cuerpo sí aporta indicios administrativos, pero sólo se
+     # evalúan si el TÍTULO es afín (`_TITULO_AFIN` o contextual). «data entry»
+     # suelto en un aviso comercial sigue sin alcanzar.
+     ("data entry", "ingreso de datos", "administrative", "administrativ",
+      "back office", "scheduling", "calendar management", "inbox management",
+      "bookkeeping", "invoicing", "records management", "filing")),
     ("Customer Support", ("customer support", "customer success", "client success",
                           "client service", "customer service", "technical support",
                           "support specialist", "help desk", "livechat", "live chat",
                           "atencion al cliente", "soporte tecnico", "customer happiness"),
      ("customer support", "customer service", "atencion al cliente")),
 ]
+
+#: Pistas de cuerpo que son HERRAMIENTA, no responsabilidad. «Power BI» en el
+#: aviso de un puesto de soporte es un tablero que se consulta, no el trabajo:
+#: por sí sola no otorga categoría (Fase 1F · C02).
+_PISTAS_CUERPO_HERRAMIENTA = {"power bi", "business intelligence"}
 
 _TITULO_FUERA_DE_PERFIL = re.compile(
     r"\b(engineer|engineering|developer|programmer|architect|designer|scientist|"
@@ -251,6 +261,15 @@ _REQ_SENIORITY = re.compile(
     r"se requiere|requiere|is a must|at least|or above)\b")
 _SENIORITY_DUDA = re.compile(r"\b(manager|supervisor|jefe|jefa|coordinador|coordinadora|"
                              r"mid level|midlevel|intermediate|semi senior|ssr)\b")
+#: E02: «manager» en estos títulos describe la relación con clientes o una
+#: cuenta, no la gestión de personas. Sólo se apartan si el aviso lo confirma.
+_GESTION_DE_CUENTA = re.compile(
+    r"\b(?:account|customer success|client success|community|social media|partner|"
+    r"relationship|customer|client)\s+manager\b")
+_EVIDENCIA_GESTION = re.compile(
+    r"\b(?:direct reports?|reports? to you|manage (?:a |the )?team|team of \d+|"
+    r"people management|performance reviews?|hiring|headcount|supervis\w*|"
+    r"coaching|mentor\w*)\b")
 
 _SKILLS = [
     "sql", "python", "excel", "power bi", "tableau", "looker", "postgresql",
@@ -260,6 +279,21 @@ _SKILLS = [
     "data visualization", "visualizacion de datos", "power query", "vba",
     "looker studio", "metabase", "qlik", "spss", "stata", "nosql", "mongodb",
 ]
+
+#: Fase 1F · C06: vocabulario de soporte y back office. `_SKILLS` sólo cubría
+#: datos y tecnología, así que un aviso de VA o de atención al cliente no tenía
+#: NINGUNA habilidad reconocible y quedaba sin puntaje (`sin_datos`). Estas
+#: pistas se detectan siempre, pero **sólo puntúan si el perfil las declara**:
+#: el resto se informa como brecha informativa y no resta ni suma. Ampliar la
+#: lista a secas bajaba el score de todos los demás puestos.
+_SKILLS_SOPORTE = [
+    "customer service", "atencion al cliente", "customer support", "soporte al cliente",
+    "data entry", "ingreso de datos", "zendesk", "freshdesk", "intercom", "help desk",
+    "crm", "google workspace", "microsoft office", "office 365", "outlook",
+    "scheduling", "bookkeeping", "invoicing", "transcription", "typing",
+    "shopify", "slack", "notion", "asana", "trello", "airtable",
+]
+
 
 # Tareas típicas por categoría: es la evidencia de que el cuerpo del aviso
 # describe el trabajo, no sólo que el título tiene la palabra clave.
@@ -285,6 +319,55 @@ _TAREAS: dict[str, tuple[str, ...]] = {
                          "customer inquiries", "soporte", "atencion al cliente",
                          "resolucion", "cases"),
 }
+
+# --- Fase 1F · C01: títulos afines que la taxonomía no reconocía -------------
+# `Helpdesk Agent`, `CX Associate`, `Executive Assistant`, `Office
+# Administrator`, `CRM Specialist`, `Operations Associate` y `Billing
+# Specialist` describen puestos reales de soporte y de back office, pero no
+# contenían ninguna de las cadenas de `_PISTAS`. Se reconocen por PATRÓN y con
+# guardas: la categoría se otorga por el título, nunca por una mención suelta
+# del cuerpo (Fase 1F · C02).
+_TITULO_ADMINISTRATIVO = re.compile(
+    r"\b(?:executive|personal|administrative|admin)\s+(?:assistant|coordinator|"
+    r"specialist|officer|support)\b"
+    r"|\boffice\s+(?:administrator|coordinator|clerk|assistant)\b"
+    r"|\boperations\s+(?:associate|assistant|coordinator)\b"
+    r"|\bback\s?office(?:\s+(?:assistant|specialist|associate|clerk))?\b"
+    r"|\bbilling\s+(?:specialist|clerk|associate|coordinator)\b"
+    r"|\bdata\s+entry(?:\s+(?:clerk|specialist|associate|operator|assistant))?\b"
+    r"|\brecords?\s+(?:clerk|specialist|assistant)\b"
+    r"|\bdocument\s+(?:specialist|controller|processor)\b"
+    r"|\border\s+processing\b"
+    r"|\bvirtual\s+assistant\b"
+)
+#: Guardas: un «operations associate» de depósito no es back office.
+_ADMIN_GUARDA = re.compile(
+    r"\b(?:warehouse|forklift|inventory|stock|shipping|receiving|driver|delivery|"
+    r"logistics|pick(?:ing)?|packing|fulfilment|fulfillment|store|retail floor)\b")
+_TITULO_SOPORTE_CONTEXTO = re.compile(
+    r"\bhelp\s?desk(?:\s+(?:agent|specialist|analyst|technician|tier\s*\d))?\b"
+    r"|\bservice\s+desk(?:\s+(?:agent|analyst|specialist))?\b"
+    r"|\bdesktop\s+support\b"
+    r"|\bcx\s+(?:associate|specialist|agent|representative|rep|advisor)\b"
+    r"|\bcustomer\s+experience\s+(?:associate|specialist|agent|representative|advisor)\b"
+    r"|\bcustomer\s+(?:care|success)\s+(?:associate|specialist|agent|representative|"
+    r"advisor|manager)\b"
+    r"|\bclient\s+(?:support|service|success)(?:\s+(?:associate|specialist|agent|"
+    r"representative|advisor|manager))?\b"
+    r"|\bsupport\s+(?:associate|agent|specialist|representative)\b"
+    r"|\btechnical\s+support(?:\s+(?:agent|specialist|associate))?\b"
+    r"|\bcall\s+cent(?:er|re)\s+(?:agent|representative)\b"
+    r"|\bbilling\s+support\b"
+)
+_TITULO_CRM = re.compile(
+    r"\bcrm\s+(?:specialist|administrator|admin|analyst|coordinator|associate)\b"
+    r"|\b(?:salesforce|hubspot)\s+(?:specialist|administrator|admin)\b"
+)
+#: Título afín a datos: sólo con esto una herramienta del cuerpo puede dar
+#: categoría (si no, «Power BI» en un aviso de soporte lo volvía BI Analyst).
+_TITULO_AFIN_DATOS = re.compile(
+    r"\b(?:analyst|analista|data|datos|bi|business intelligence|reporting|insights|"
+    r"research|sql|analytics|estadistic|statistic)\b")
 
 # --- Idiomas: una tabla de superficies -> idioma canónico ------------------
 # «French-speaking», «Francophone» y «francés» son el MISMO requisito. Tener
@@ -532,6 +615,11 @@ _PAISES_NO_AR = [
     "denmark", "finland", "switzerland", "italy", "turkey", "israel", "egypt",
     "morocco", "ukraine", "czech", "hungary", "greece", "china", "korea",
     "taiwan", "hong kong", "saudi", "emirates", "qatar", "north america",
+    # Fase 1F · T03: países y regiones que quedaban en «dudosa» sin motivo.
+    "bulgaria", "croatia", "serbia", "slovenia", "slovakia", "lithuania",
+    "latvia", "estonia", "luxembourg", "malta", "iceland", "cyprus", "moldova",
+    "albania", "asia pacific", "asia-pacific", "apac", "middle east",
+    "gulf region", "central america", "caribbean",
 ]
 # Indicadores de EE. UU. que no aparecen como frase completa en las regiones:
 # «Your Remote US Home Office», «US-Remote», «U.S. only». Se buscan como palabra.
@@ -545,6 +633,42 @@ _CIUDADES_EEUU = ("san francisco", "new york", "seattle", "austin", "boston", "c
                   "denver", "atlanta", "los angeles", "san diego", "miami", "dallas",
                   "houston", "philadelphia", "phoenix", "portland", "minneapolis",
                   "washington dc", "silicon valley", "bay area", "new jersey")
+
+#: T03: nombres completos de estados de EE. UU. (`_ESTADOS_EEUU` sólo tiene el
+#: código de dos letras, así que «Ohio» o «Texas» quedaban en «dudosa»).
+_ESTADOS_EEUU_NOMBRES = (
+    "alabama", "alaska", "arizona", "arkansas", "california", "colorado",
+    "connecticut", "delaware", "florida", "georgia", "hawaii", "idaho",
+    "illinois", "indiana", "iowa", "kansas", "kentucky", "louisiana", "maine",
+    "maryland", "massachusetts", "michigan", "minnesota", "mississippi",
+    "missouri", "montana", "nebraska", "nevada", "new hampshire", "new jersey",
+    "new mexico", "new york state", "north carolina", "north dakota", "ohio",
+    "oklahoma", "oregon", "pennsylvania", "rhode island", "south carolina",
+    "south dakota", "tennessee", "texas", "utah", "vermont", "virginia",
+    "washington state", "west virginia", "wisconsin", "wyoming",
+)
+#: Ciudades extranjeras inequívocas. No se incluye ningún topónimo argentino ni
+#: nombres ambiguos («Santiago» puede ser Chile o España): esos se resuelven por
+#: el país que acompaña a la región.
+_CIUDADES_NO_AR = (
+    "berlin", "munich", "munchen", "hamburg", "frankfurt", "cologne", "koln",
+    "stuttgart", "dusseldorf", "dortmund", "leipzig", "dresden", "nuremberg",
+    "london", "manchester", "edinburgh", "dublin", "paris", "lyon", "madrid",
+    "barcelona", "valencia", "lisbon", "porto", "rome", "milan", "naples",
+    "amsterdam", "rotterdam", "brussels", "antwerp", "warsaw", "krakow",
+    "prague", "brno", "vienna", "zurich", "geneva", "basel", "stockholm",
+    "oslo", "copenhagen", "helsinki", "tallinn", "riga", "vilnius", "sofia",
+    "bucharest", "budapest", "athens", "belgrade", "zagreb", "istanbul",
+    "ankara", "tel aviv", "dubai", "abu dhabi", "cairo", "lagos", "nairobi",
+    "johannesburg", "cape town", "toronto", "vancouver", "montreal", "ottawa",
+    "sydney", "melbourne", "brisbane", "auckland", "wellington", "tokyo",
+    "osaka", "seoul", "singapore", "hong kong", "shanghai", "beijing",
+    "shenzhen", "bangalore", "bengaluru", "mumbai", "new delhi", "hyderabad",
+    "pune", "chennai", "manila", "cebu", "jakarta", "bangkok", "hanoi",
+    "ho chi minh", "kuala lumpur", "karachi", "lahore", "dhaka",
+    "mexico city", "ciudad de mexico", "guadalajara", "monterrey", "bogota",
+    "medellin", "lima", "quito", "caracas", "sao paulo", "rio de janeiro",
+)
 
 # Un PAÍS declarado explícitamente en la región manda sobre cualquier parecido
 # con un topónimo argentino. «Cordoba, Spain» no es Córdoba (AR); «La Plata,
@@ -1122,6 +1246,9 @@ class Evaluacion:
     decisivas: list[str] = field(default_factory=list)
     componentes: list[Componente] = field(default_factory=list)
     cobertura: float = 0.0
+    #: `observada` = puntaje sobre lo que el aviso declara; `conservadora` = sobre
+    #: todo el peso aplicable; `sin_datos` = no hay con qué puntuar.
+    escala: str = "conservadora"
     provisional: bool = False
     categoria: str | None = None
     origen_categoria: str = "ninguno"
@@ -1185,20 +1312,119 @@ def _categoria_ops_tecnica(titulo: str, texto: str):
     return (None, "operaciones técnicas sin tareas del perfil confirmadas en el aviso")
 
 
-def categoria_de(titulo: str, texto: str) -> tuple[str | None, str, str]:
+def categorias_efectivas(categorias: list[str] | None = None) -> list[str]:
+    """Categorías habilitadas por el perfil activo, en el orden de `CATEGORIAS`.
+
+    Si el perfil no declara categorías (dato faltante, perfiles anteriores a
+    `perfil-ejemplo-1`) se usan todas: compatibilidad retroactiva explícita, no
+    silenciosa. Una categoría del perfil que el código no conoce se ignora y se
+    informa por `categorias_no_reconocidas`.
+    """
+    if not categorias:
+        return list(CATEGORIAS)
+    pedidas = {c.strip() for c in categorias if isinstance(c, str) and c.strip()}
+    efectivas = [c for c in CATEGORIAS if c in pedidas]
+    return efectivas or list(CATEGORIAS)
+
+
+def categorias_no_reconocidas(categorias: list[str] | None = None) -> list[str]:
+    """Categorías pedidas por el perfil que la taxonomía no implementa."""
+    if not categorias:
+        return []
+    conocidas = set(CATEGORIAS)
+    return sorted({c.strip() for c in categorias
+                   if isinstance(c, str) and c.strip() and c.strip() not in conocidas})
+
+
+def _categoria_por_titulo_contextual(en_titulo: str, cuerpo: str,
+                                     permitidas: set[str]) -> tuple[str, str] | None:
+    """C01: títulos de soporte/back office reconocidos por patrón y contexto.
+
+    Devuelve (categoría, motivo) o `None`. Nunca devuelve una categoría que el
+    perfil no habilite: en ese caso el título queda sin categoría y el motivo lo
+    dice, en vez de clasificarlo en una categoría que el perfil no acepta.
+    """
+    if "VA/Data Entry" in permitidas and _TITULO_ADMINISTRATIVO.search(en_titulo):
+        if _ADMIN_GUARDA.search(cuerpo):
+            return None
+        return ("VA/Data Entry",
+                "el título describe tareas administrativas de back office")
+    if "Customer Support" in permitidas and _TITULO_SOPORTE_CONTEXTO.search(en_titulo):
+        return ("Customer Support",
+                "el título describe atención a clientes o mesa de ayuda")
+    if "Data Operations" in permitidas and _TITULO_CRM.search(en_titulo):
+        return ("Data Operations",
+                "el título describe administración y calidad de datos de CRM")
+    return None
+
+
+def _categoria_por_cuerpo(en_titulo: str, en_texto: str,
+                          permitidas: set[str]) -> tuple[str, str, str] | None:
+    """C02/C03: indicios del cuerpo, con precedencia por responsabilidad.
+
+    Reglas:
+    - Una pista de HERRAMIENTA (`power bi`, `business intelligence`) sólo cuenta
+      si el título ya es afín a datos. Un tablero que se consulta no convierte un
+      puesto de soporte en BI Analyst.
+    - Entre las categorías con indicio gana la que además tiene TAREAS descritas
+      en el texto; si ninguna las tiene, gana la más específica según `_PISTAS`.
+    """
+    afin_datos = bool(_TITULO_AFIN_DATOS.search(en_titulo))
+    candidatas: list[tuple[str, str]] = []
+    for categoria, _, pistas_cuerpo in _PISTAS:
+        if categoria not in permitidas:
+            continue
+        for pista in pistas_cuerpo:
+            if not re.search(rf"\b{re.escape(pista)}\b", en_texto):
+                continue
+            if pista in _PISTAS_CUERPO_HERRAMIENTA and not afin_datos:
+                continue
+            candidatas.append((categoria, pista))
+            break
+    if not candidatas:
+        return None
+    con_tareas = [c for c in candidatas if hay_tareas_de(c[0], en_texto)]
+    categoria, pista = (con_tareas or candidatas)[0]
+    return (categoria,
+            f"indicio en el cuerpo con '{pista}' (sin confirmar en el título)",
+            "texto")
+
+
+def categoria_de(titulo: str, texto: str,
+                 categorias: list[str] | None = None) -> tuple[str | None, str, str]:
     """Devuelve (categoría, motivo, origen).
 
     Origen `titulo` es la única vía para una categoría plena. `texto` es indicio:
     sirve para revisar a mano, no para puntuar alto.
+
+    `categorias` son las que habilita el perfil activo (C05). Si se omite, se
+    usan todas las de `CATEGORIAS`: mismo comportamiento que `rules-3.1.0`.
     """
     en_titulo = normalizar(titulo)
+    cuerpo = normalizar(texto[:6000])
+    permitidas = set(categorias_efectivas(categorias))
+
     # Fase 1E · D3: «IT Operations Analyst» no es Business Analyst por la pista
     # suelta «operations analyst». Se resuelve por título + responsabilidades.
     override = _categoria_ops_tecnica(titulo, texto)
     if override is not None:
         categoria, motivo = override
+        if categoria is not None and categoria not in permitidas:
+            return (None,
+                    f"la categoría detectada ({categoria}) no está habilitada en el perfil",
+                    "ninguno")
         return categoria, motivo, ("texto" if categoria else "ninguno")
+
     for categoria, pistas_titulo, _ in _PISTAS:
+        if categoria not in permitidas:
+            # C05: la categoría existe en el código pero el perfil no la habilita.
+            # Se nombra el hecho en vez de disfrazarlo de «rol fuera de perfil».
+            for pista in pistas_titulo:
+                if re.search(rf"\b{re.escape(pista)}\b", en_titulo):
+                    return (None,
+                            f"el título coincide con '{categoria}', que el perfil "
+                            f"activo no habilita", "ninguno")
+            continue
         for pista in pistas_titulo:
             if re.search(rf"\b{re.escape(pista)}\b", en_titulo):
                 return categoria, f"coincidencia en el título con '{pista}'", "titulo"
@@ -1206,17 +1432,39 @@ def categoria_de(titulo: str, texto: str) -> tuple[str | None, str, str]:
     if _TITULO_FUERA_DE_PERFIL.search(en_titulo):
         return None, "el título corresponde a un rol fuera de las categorías del perfil", "ninguno"
 
+    # C01: títulos afines por patrón (soporte, back office, CRM), con guardas.
+    contextual = _categoria_por_titulo_contextual(en_titulo, cuerpo, permitidas)
+    if contextual is not None:
+        return contextual[0], contextual[1], "titulo"
+
     if not _TITULO_AFIN.search(en_titulo):
         return None, "el título no es afín a las categorías del perfil", "ninguno"
 
-    en_texto = normalizar(texto[:1500])
-    for categoria, _, pistas_cuerpo in _PISTAS:
-        for pista in pistas_cuerpo:
-            if re.search(rf"\b{re.escape(pista)}\b", en_texto):
-                return (categoria,
-                        f"indicio en el cuerpo con '{pista}' (sin confirmar en el título)",
-                        "texto")
+    indicio = _categoria_por_cuerpo(en_titulo, normalizar(texto[:1500]), permitidas)
+    if indicio is not None:
+        return indicio
     return None, "sin coincidencia con las diez categorías del perfil", "ninguno"
+
+
+
+_ALCANCE_EN_CUERPO = re.compile(
+    r"\b(?:worldwide|world\s?wide|work\s+from\s+anywhere|anywhere\s+in\s+the\s+world|"
+    r"open\s+to\s+(?:applicants|candidates)\s+(?:from\s+)?(?:all|any)\s+countries|"
+    r"all\s+countries|globally\s+remote|remote\s+globally|"
+    r"latin\s+america|latam|south\s+america|the\s+americas|"
+    r"international\s+applicants|anywhere\s+in\s+argentina|"
+    r"candidates?\s+from\s+any\s+country)\b")
+
+
+def _alcance_declarado_en_cuerpo(cuerpo: str) -> str | None:
+    """T01: alcance compatible declarado EN EL TEXTO del aviso.
+
+    Se usa sólo para detectar CONTRADICCIÓN con la etiqueta de la fuente. No
+    otorga elegibilidad por sí solo: si la fuente restringe y el cuerpo amplía,
+    el resultado es `duda` con el conflicto registrado, nunca `eligible`.
+    """
+    m = _ALCANCE_EN_CUERPO.search(cuerpo)
+    return m.group(0) if m else None
 
 
 def _restriccion_en_cuerpo(cuerpo: str) -> bool:
@@ -1246,9 +1494,19 @@ def _territorio(region: str | None, titulo: str, texto: str) -> tuple[str, str, 
     # Fase 1E: se tipa la declaración territorial ANTES de decidir. Una lista
     # multipaís admitida no es una exclusión; una restricción explícita sí lo es
     # y debe poder evaluarse incluso si el aviso menciona una preferencia.
+    alcance_cuerpo = _alcance_declarado_en_cuerpo(cuerpo)
     lista_previa = _territorio_lista_multipais(region, cuerpo) if campo else None
     exclusion_explicita = _exclusion_explicita_de_fuente(
         campo, en_titulo, lista_previa, region)
+
+    def _campo_excluye(motivo: str, restriccion: str):
+        """Exclusión por etiqueta de fuente, salvo contradicción con el cuerpo."""
+        if alcance_cuerpo:
+            return ("duda",
+                    f"{motivo}; el cuerpo declara «{alcance_cuerpo}»: metadatos "
+                    f"contradictorios, confirmar el alcance antes de postular",
+                    restriccion, "desconocido")
+        return ("excluye", motivo, restriccion, "restringido")
 
     # 1) El cuerpo manda. Se revisan también las cláusulas y el texto completo:
     #    la negación se evalúa DENTRO de cada cláusula, no sobre una ventana ciega
@@ -1317,8 +1575,8 @@ def _territorio(region: str | None, titulo: str, texto: str) -> tuple[str, str, 
             # Un país nombrado explícitamente gana al parecido con un topónimo
             # argentino: «Anywhere in Cordoba, Spain» no es Córdoba (AR).
             if _pais_explicito(destino, etiqueta=True):
-                return ("excluye", f"la fuente restringe la ubicación a {region}",
-                        region or "", "restringido")
+                return _campo_excluye(f"la fuente restringe la ubicación a {region}",
+                                      region or "")
             if "argentina" in destino or _contexto_argentino(destino):
                 return ("ok", f"la fuente declara alcance compatible: {region}",
                         region or "", "argentina" if "argentina" in destino else "internacional")
@@ -1326,8 +1584,8 @@ def _territorio(region: str | None, titulo: str, texto: str) -> tuple[str, str, 
                 return ("ok", f"la fuente declara alcance compatible: {region}",
                         region or "", "internacional")
             if _restringido_en(destino):
-                return ("excluye", f"la fuente restringe la ubicación a {region}",
-                        region or "", "restringido")
+                return _campo_excluye(f"la fuente restringe la ubicación a {region}",
+                                      region or "")
             if re.search(r"\b(?:world|globe|planet|worldwide|international)\b", destino):
                 return ("ok", f"la fuente declara alcance compatible: {region}",
                         region or "", "mundial")
@@ -1337,8 +1595,8 @@ def _territorio(region: str | None, titulo: str, texto: str) -> tuple[str, str, 
         # 3b) País extranjero explícito: prioridad absoluta sobre el contexto
         #     argentino. «Cordoba, Spain» y «La Plata, Maryland, USA» no son AR.
         if _pais_explicito(campo, etiqueta=True):
-            return ("excluye", f"la fuente restringe la ubicación a {region}",
-                    region or "", "restringido")
+            return _campo_excluye(f"la fuente restringe la ubicación a {region}",
+                                  region or "")
 
         # 3c) Contexto argentino confirmado: «La Plata, AR» NO es Arkansas.
         if _contexto_argentino(campo):
@@ -1349,15 +1607,29 @@ def _territorio(region: str | None, titulo: str, texto: str) -> tuple[str, str, 
             return ("ok", f"la fuente declara alcance compatible: {region}",
                     region or "", _alcance_de_campo(campo))
 
+        # 3d') T03: estado o ciudad extranjera nombrada completa. Antes
+        #      «Ohio», «Berlin (remote)» o «Bulgaria» quedaban en «dudosa»
+        #      porque sólo se reconocían el código de dos letras y el país.
+        estado_largo = next((e for e in _ESTADOS_EEUU_NOMBRES
+                             if re.search(rf"\b{re.escape(e)}\b", campo)), None)
+        if estado_largo:
+            return _campo_excluye(
+                f"la región es un estado de EE. UU.: {region}", region or "")
+        ciudad = next((c for c in _CIUDADES_NO_AR
+                       if re.search(rf"\b{re.escape(c)}\b", campo)), None)
+        if ciudad:
+            return _campo_excluye(
+                f"la región es una ciudad extranjera: {region}", region or "")
+
         # 3d) País, código ISO o estado de EE. UU. declarado.
         detectado = next((p for p in _PAISES_NO_AR
                           if re.search(rf"\b{re.escape(p)}\b", campo)), None)
         if detectado:
-            return ("excluye", f"la fuente restringe la ubicación a {region}",
-                    region or "", "restringido")
+            return _campo_excluye(f"la fuente restringe la ubicación a {region}",
+                                  region or "")
         if _EEUU.search(campo):
-            return ("excluye", f"la región declarada apunta a Estados Unidos: {region}",
-                    region or "", "restringido")
+            return _campo_excluye(
+                f"la región declarada apunta a Estados Unidos: {region}", region or "")
 
         iso = _iso_region(region)
         if iso == "argentina":
@@ -1366,17 +1638,17 @@ def _territorio(region: str | None, titulo: str, texto: str) -> tuple[str, str, 
             return ("duda", f"código de país ambiguo en la región: {region}",
                     region or "", "desconocido")
         if iso:
-            return ("excluye", f"la fuente restringe la ubicación a {region} ({iso})",
-                    region or "", "restringido")
+            return _campo_excluye(
+                f"la fuente restringe la ubicación a {region} ({iso})", region or "")
 
         ultimo = normalizar(re.sub(r"\([^)]*\)", " ",
                                    (region or "").rsplit(",", 1)[-1]).strip(" ,"))
         if ultimo in _ESTADOS_EEUU:
-            return ("excluye", f"la región es un estado de EE. UU.: {region}",
-                    region or "", "restringido")
+            return _campo_excluye(
+                f"la región es un estado de EE. UU.: {region}", region or "")
         if any(ciudad in campo for ciudad in _CIUDADES_EEUU):
-            return ("excluye", f"la región es una ciudad de EE. UU.: {region}",
-                    region or "", "restringido")
+            return _campo_excluye(
+                f"la región es una ciudad de EE. UU.: {region}", region or "")
         return ("duda", f"región declarada no concluyente: {region}",
                 region or "", "desconocido")
 
@@ -1633,8 +1905,12 @@ def _analisis_idiomas(titulo: str, texto: str, perfil_nivel: str) -> AnalisisIdi
         return AnalisisIdiomas("no_aplicable",
                                "el aviso está en español: no declara requisito de idioma",
                                8, requisitos=lista)
-    return AnalisisIdiomas("desconocido", "no se declara requisito de idioma",
-                           0, requisitos=lista)
+    return AnalisisIdiomas(
+        "desconocido",
+        "no se declara requisito de idioma y el texto es demasiado corto para "
+        "reconocer el idioma del aviso" if len(normalizar(texto[:1500])) < 80
+        else "no se declara requisito de idioma",
+        0, requisitos=lista)
 
 
 def _idioma(titulo: str, texto: str, perfil_nivel: str) -> tuple[str, str, int]:
@@ -1674,6 +1950,21 @@ _GRADO_NEGADO = re.compile(
     r"\b(?:not|no)\s+(?:required|needed|necessary)\b")
 _GRADO_PREFERIDO = re.compile(
     r"\b(?:preferred|preferible|deseable|a plus|nice to have|bonus|optional|opcional)\b")
+#: E01: alternativas explícitas al título. «Bachelor's degree or equivalent
+#: experience» NO es lo mismo que «Bachelor's degree required»: la primera admite
+#: trayectoria y la segunda no. No se infiere ninguna equivalencia que el aviso
+#: no escriba.
+_GRADO_EQUIVALENTE = re.compile(
+    r"\b(?:or|o)\s+(?:an?\s+)?(?:equivalent|comparable|similar|related)\s+"
+    r"(?:work\s+|professional\s+|practical\s+|relevant\s+|hands.?on\s+)?"
+    r"(?:experience|experiencia|trayectoria)\b"
+    r"|\b(?:or|o)\s+(?:equivalent|comparable)\b"
+    r"|\bexperience\s+(?:may|can)\s+(?:be\s+)?(?:substitute|replace|count)\b"
+    r"|\bin\s+lieu\s+of\s+(?:a\s+)?degree\b"
+    r"|\bor\s+demonstrable\s+experience\b"
+    r"|\bdegree\s+or\s+(?:equivalent\s+)?experience\b"
+)
+
 
 
 def _formacion(texto: str) -> tuple[str, str | None]:
@@ -1693,9 +1984,23 @@ def _formacion(texto: str) -> tuple[str, str | None]:
             estados.append(("ok", "el aviso declara que no exige título"))
             continue
         if _REQ_GRADO.search(unidad):
-            estados.append(("excluye", "título universitario obligatorio"))
+            # E01: si la misma cláusula ofrece una alternativa explícita, el
+            # título no es un corte duro: va a revisión, no a descarte.
+            if _GRADO_EQUIVALENTE.search(unidad):
+                estados.append(("duda",
+                                "título universitario o experiencia equivalente"))
+            else:
+                estados.append(("excluye", "título universitario obligatorio"))
         elif _GRADO_PREFERIDO.search(unidad):
             estados.append(("duda", "título universitario preferido"))
+        elif _GRADO_EQUIVALENTE.search(unidad):
+            # «Bachelor's degree or equivalent experience», sin «required»:
+            # sigue siendo una exigencia, pero con alternativa explícita.
+            estados.append(("duda", "título universitario o experiencia equivalente"))
+        elif _GRADO_EQUIVALENTE.search(unidad):
+            # «Bachelor's degree or equivalent experience», sin «required»:
+            # sigue siendo una exigencia, pero con alternativa explícita.
+            estados.append(("duda", "título universitario o experiencia equivalente"))
     conjunto = {e for e, _ in estados}
     if {"excluye", "ok"} <= conjunto:
         return "duda", "formación contradictoria: el aviso exige y exime el título"
@@ -1706,6 +2011,7 @@ def _formacion(texto: str) -> tuple[str, str | None]:
     if estados:
         return "duda", estados[0][1]
     return "desconocido", None
+
 
 
 # --- Experiencia: años LABORALES, no edad ni antigüedad de empresa ----------
@@ -1758,7 +2064,14 @@ def _experiencia(titulo: str, texto: str, declarado: str | None,
     if _SENIORITY_EXCLUYE.search(base):
         return "excluye", f"el título declara un nivel superior al perfil: {titulo}", None
     if _SENIORITY_DUDA.search(base):
-        return "duda", f"el título implica responsabilidad de gestión: {titulo}", None
+        # E02: un «Customer Success Manager» o un «Account Manager» administra
+        # cuentas, no necesariamente personas. Se aparta sólo si el aviso lo
+        # confirma; si no, se sigue evaluando por años y seniority declarados.
+        if (_GESTION_DE_CUENTA.search(base)
+                and not _EVIDENCIA_GESTION.search(normalizar(texto[:6000]))):
+            pass
+        else:
+            return "duda", f"el título implica responsabilidad de gestión: {titulo}", None
 
     # Seniority obligatorio también puede estar en el cuerpo, no sólo en el
     # título. Exige un marcador de obligatoriedad: «senior stakeholders» NO.
@@ -1805,12 +2118,59 @@ def hay_tareas_de(categoria: str | None, texto: str) -> bool:
     return any(re.search(rf"\b{re.escape(t)}\b", plano) for t in _TAREAS.get(categoria, ()))
 
 
-def _skills_requeridas(texto: str, habilidades: dict[str, float]) -> tuple[list[dict], list[dict]]:
-    """Cruza las habilidades pedidas con el perfil, ponderadas por nivel."""
-    plano = normalizar(texto)
+_SINONIMOS_CATEGORIA: dict[str, tuple[str, ...]] = {
+    "Data Analyst": ("data analyst", "data analysis", "analytics", "data analytics"),
+    "Data Scientist": ("data scientist", "data science", "machine learning"),
+    "Business Analyst": ("business analyst", "business analysis", "functional analyst"),
+    "BI Analyst": ("bi", "business intelligence", "power bi", "bi analyst"),
+    "Reporting Analyst": ("reporting", "reports", "reporting analyst"),
+    "Data Operations": ("data operations", "data ops", "data quality", "data entry",
+                        "data management"),
+    "SQL Analyst": ("sql", "sql analyst"),
+    "Research Analyst": ("research", "market research", "research analyst"),
+    "VA/Data Entry": ("virtual assistant", "va", "administrative", "back office",
+                      "data entry", "admin"),
+    "Customer Support": ("customer support", "customer service", "support", "helpdesk",
+                         "help desk", "customer success", "client service"),
+}
+
+
+def _categoria_corroborada(categoria: str | None, categoria_fuente: str | None) -> bool | None:
+    """¿La etiqueta de la fuente coincide con la categoría del texto?
+
+    `None` = la fuente no publicó categoría. Nunca decide: sólo corrobora o deja
+    constancia de la discrepancia. Una etiqueta externa no puede convertir un
+    aviso en elegible ni descartarlo por sí sola (C04).
+    """
+    if not categoria or not categoria_fuente:
+        return None
+    base = normalizar(categoria_fuente)
+    sinonimos = _SINONIMOS_CATEGORIA.get(categoria, ())
+    return any(re.search(rf"\b{re.escape(s)}\b", base) for s in sinonimos)
+
+
+def _skills_requeridas(texto: str, habilidades: dict[str, float],
+
+                       extra: str | None = None) -> tuple[list[dict], list[dict], list[dict]]:
+    """Cruza las habilidades pedidas con el perfil, ponderadas por nivel.
+
+    Devuelve `(aplicables, faltantes, informativas)`:
+
+    - `aplicables`: pedidas y declaradas por el perfil → puntúan por nivel.
+    - `faltantes`: pedidas, del vocabulario técnico y NO declaradas → restan.
+    - `informativas`: pedidas del vocabulario de soporte/back office y no
+      declaradas → se muestran al revisor, no restan ni suman. Son herramientas
+      de un puesto que el perfil no cubre: descontarlas castigaría dos veces.
+
+    `extra` es la evidencia estructurada de la fuente (`observations.skills`).
+    Se usa como texto adicional porque es un dato de origen, no una inferencia.
+    """
+    plano = normalizar(f"{texto}\n{extra or ''}")
     aplicables: list[dict] = []
     faltantes: list[dict] = []
-    for skill in _SKILLS:
+    informativas: list[dict] = []
+
+    for skill in _SKILLS + [s for s in _SKILLS_SOPORTE if s not in _SKILLS]:
         if not re.search(rf"\b{re.escape(skill)}\b", plano):
             continue
         posicion = plano.find(skill)
@@ -1822,15 +2182,25 @@ def _skills_requeridas(texto: str, habilidades: dict[str, float]) -> tuple[list[
             item["nivel"] = habilidades[skill]
             item["peso_cumplido"] = peso * habilidades[skill]
             aplicables.append(item)
+        elif skill in _SKILLS_SOPORTE and skill not in _SKILLS:
+            item["peso_cumplido"] = 0.0
+            informativas.append(item)
         else:
             item["peso_cumplido"] = 0.0
             faltantes.append(item)
-    return aplicables, faltantes
+    return aplicables, faltantes, informativas
+
 
 
 def _vigencia(expira_en: str | None, publicado_en: str | None,
               ahora: datetime | None = None) -> str:
-    """`closed`, `open` o `unknown`. Un aviso viejo sin cierre NO es `open`."""
+    """`closed`, `open`, `stale` o `unknown`.
+
+    `stale` (V01) es un estado propio: el aviso se publicó hace más de
+    `DIAS_VIGENCIA_RAZONABLE` días y nadie confirmó que siga abierto. No es
+    `closed` —la antigüedad no prueba el cierre— ni `open` —no hay evidencia de
+    disponibilidad—. Va a revisión, nunca a alerta.
+    """
     ahora = ahora or datetime.now(timezone.utc)
     if expira_en:
         try:
@@ -1843,7 +2213,9 @@ def _vigencia(expira_en: str | None, publicado_en: str | None,
         publicado = datetime.fromisoformat(publicado_en.replace("Z", "+00:00"))
     except ValueError:
         return "unknown"
-    return "open" if (ahora - publicado).days <= DIAS_VIGENCIA_RAZONABLE else "unknown"
+    if (ahora - publicado).days <= DIAS_VIGENCIA_RAZONABLE:
+        return "open"
+    return "stale"
 
 
 def _salario_comparable(salario: dict | None) -> bool:
@@ -1863,7 +2235,7 @@ def _confianza(componentes: list[Componente], vigencia: str, origen_categoria: s
         faltantes += 1
     if not publicado_en:
         faltantes += 1
-    if vigencia == "unknown":
+    if vigencia in {"unknown", "stale"}:
         faltantes += 1
     if origen_categoria == "texto":
         faltantes += 1
@@ -1891,17 +2263,25 @@ def evaluar(oferta: dict, perfil: dict) -> Evaluacion:
             habilidades[nombre] = max(habilidades.get(nombre, 0.0),
                                       peso_habilidad(habilidad.get("nivel")))
 
-    categoria, motivo_categoria, origen_categoria = categoria_de(titulo, texto)
+    categoria, motivo_categoria, origen_categoria = categoria_de(
+        titulo, texto, perfil.get("categorias"))
     territorio, motivo_territorio, restriccion, alcance = _territorio(region, titulo, texto)
     formacion, motivo_formacion = _formacion(texto)
     laboral, motivo_laboral = _restricciones_laborales(texto)
     modalidad = _modalidad(region, titulo, texto, oferta.get("tipo_contrato"))
     vigencia = _vigencia(oferta.get("expira_en"), oferta.get("publicado_en"))
 
-    aplicables, faltantes = _skills_requeridas(texto, habilidades)
+    # C04: la etiqueta de la fuente es EVIDENCIA, no veredicto. `categoria_fuente`
+    # (columna de `observations`) y `tipo_contrato` (tipo de empleo del aviso) son
+    # campos distintos: mezclarlos hacía que «Customer Service» se leyera como
+    # modalidad de trabajo.
+    corroborada = _categoria_corroborada(categoria, oferta.get("categoria_fuente"))
+    aplicables, faltantes, informativas = _skills_requeridas(
+        texto, habilidades, oferta.get("skills"))
     peso_total = sum(i["peso"] for i in aplicables + faltantes)
     peso_cumplido = sum(i["peso_cumplido"] for i in aplicables)
     cobertura_competencias = (peso_cumplido / peso_total) if peso_total else 0.0
+
 
     experiencia, motivo_experiencia, anios = _experiencia(
         titulo, texto, oferta.get("seniority"), cobertura_competencias)
@@ -2001,6 +2381,13 @@ def evaluar(oferta: dict, perfil: dict) -> Evaluacion:
         decisivas.append(motivo_laboral or "viajes sin precisar")
         razones.append({"tipo": "viajes", "texto": motivo_laboral or "", "efecto": "duda"})
 
+    if vigencia == "stale":
+        mensaje = ("vigencia sin confirmar: el aviso se publicó hace más de "
+                   f"{DIAS_VIGENCIA_RAZONABLE} días y no declara fecha de cierre")
+        incertidumbres.append(mensaje)
+        decisivas.append(mensaje)
+        razones.append({"tipo": "vigencia", "texto": mensaje, "efecto": "duda"})
+
     if idioma == "incumplido":
         excluye = True
         motivos_duros.append((1, motivo_idioma))
@@ -2020,6 +2407,14 @@ def evaluar(oferta: dict, perfil: dict) -> Evaluacion:
         incertidumbres.append(motivo_idioma)
         decisivas.append(motivo_idioma)
         razones.append({"tipo": "idioma", "texto": motivo_idioma, "efecto": "duda"})
+    elif idioma == "desconocido":
+        # L01: un aviso corto o sin nivel declarado no se evalúa. Antes no
+        # dejaba NINGÚN rastro y parecía que el idioma había dado por bueno el
+        # aviso. No bloquea: se declara que no se evaluó.
+        mensaje = ("idioma no evaluado: el aviso no declara nivel exigido y su "
+                   "texto no alcanza para inferir el idioma")
+        incertidumbres.append(mensaje)
+        razones.append({"tipo": "idioma", "texto": mensaje, "efecto": "duda"})
 
     evaluacion = Evaluacion(
         razones=razones,
@@ -2046,6 +2441,11 @@ def evaluar(oferta: dict, perfil: dict) -> Evaluacion:
             "estado_laboral": laboral,
             "idioma_aviso": _idioma_del_aviso(texto),
             "tareas_en_el_texto": hay_tareas_de(categoria, texto),
+            "categoria_fuente": oferta.get("categoria_fuente"),
+            "categoria_corroborada": corroborada,
+            "tipo_contrato": oferta.get("tipo_contrato"),
+            "categorias_efectivas": categorias_efectivas(perfil.get("categorias")),
+            "categorias_no_reconocidas": categorias_no_reconocidas(perfil.get("categorias")),
             "publicado_en": oferta.get("publicado_en"),
             "ultima_deteccion": oferta.get("ultima_deteccion"),
             "expira_en": oferta.get("expira_en"),
@@ -2079,10 +2479,24 @@ def evaluar(oferta: dict, perfil: dict) -> Evaluacion:
 
     # 2. Habilidades (40), ponderadas por nivel y por amplitud de la evidencia.
     if not aplicables and not faltantes:
-        componentes.append(Componente("habilidades", 40, 0, aplicable=True, estado="sin_datos",
-                                      detalle="el aviso no enumera habilidades reconocibles"))
-        incertidumbres.append("el aviso no enumera habilidades: no se puede puntuar")
-        decisivas.append("sin habilidades declaradas: información insuficiente")
+        if informativas:
+            # C06: el aviso pide habilidades de un puesto que el perfil no cubre.
+            # No es «no hay datos»: hay datos y dicen que falta. Se puntúa 0 y se
+            # deja constancia, sin descontar dos veces lo mismo.
+            nombres = ", ".join(sorted({i["skill"] for i in informativas}))
+            componentes.append(Componente(
+                "habilidades", 40, 0, True, estado="parcial",
+                detalle=f"el aviso pide habilidades que el perfil no declara: {nombres}"))
+            incertidumbres.append(
+                "el aviso pide habilidades que el perfil no declara: " + nombres)
+            decisivas.append(
+                "el perfil no declara ninguna de las habilidades que pide el aviso")
+        else:
+            componentes.append(Componente("habilidades", 40, 0, aplicable=True,
+                                          estado="sin_datos",
+                                          detalle="el aviso no enumera habilidades reconocibles"))
+            incertidumbres.append("el aviso no enumera habilidades: no se puede puntuar")
+            decisivas.append("sin habilidades declaradas: información insuficiente")
     else:
         distintas = len({i["skill"] for i in aplicables + faltantes})
         # Una sola habilidad mencionada es un dato suelto, no una medición.
@@ -2098,6 +2512,7 @@ def evaluar(oferta: dict, perfil: dict) -> Evaluacion:
         if distintas < 3:
             incertidumbres.append(
                 f"el aviso menciona {distintas} habilidad(es): cobertura poco representativa")
+
 
     # 3. Experiencia (20).
     if experiencia == "excepcion":
@@ -2144,21 +2559,36 @@ def evaluar(oferta: dict, perfil: dict) -> Evaluacion:
     obtenido_total = sum(c.obtenido for c in componentes if c.aplicable)
     con_datos = sum(c.maximo for c in componentes
                     if c.aplicable and c.estado not in {"sin_datos"})
+    observados = sum(1 for c in componentes
+                     if c.aplicable and c.estado not in {"sin_datos"})
     hay_habilidades = any(c.nombre == "habilidades" and c.estado != "sin_datos"
                           for c in componentes)
 
     evaluacion.componentes = componentes
-    evaluacion.compatibilidad = (round(100 * obtenido_total / base, 1)
-                                 if base and hay_habilidades else None)
     evaluacion.cobertura = round(con_datos / base, 2) if base else 0.0
+    # S01/S02: el puntaje se mantiene sobre TODO el peso aplicable. Normalizar
+    # sobre lo observado fue la tentación obvia para destrabar el techo de 73,
+    # pero infla cualquier coincidencia parcial (un aviso que cubre 13/40 de
+    # habilidades pasaba de 42 a 54) y vuelve a premiar la ausencia de datos.
+    # El desajuste de escala se corrige en el UMBRAL de alerta, que es donde
+    # estaba el error, y no en la fórmula.
+    if not base or not hay_habilidades:
+        evaluacion.compatibilidad = None
+        evaluacion.escala = "sin_datos"
+    else:
+        evaluacion.compatibilidad = round(100 * obtenido_total / base, 1)
+        evaluacion.escala = "aplicable"
     evaluacion.provisional = any(c.estado in {"provisional", "sin_datos"} or not c.aplicable
                                  for c in componentes)
     evaluacion.requisitos.update({
         "skills_aplicables": aplicables,
         "skills_faltantes": faltantes,
+        "skills_informativas": informativas,
         "excepcion_experiencia": experiencia == "excepcion",
         "anios_requeridos": anios,
         "cobertura_competencias": round(cobertura_competencias, 2),
+        "escala_puntaje": evaluacion.escala,
+        "componentes_observados": observados,
     })
 
     if evaluacion.cobertura < COBERTURA_MINIMA_DUDA:
@@ -2197,7 +2627,7 @@ def clave_orden(analisis: dict, oferta: dict) -> tuple:
     if compatibilidad is None:
         compatibilidad = analisis.get("score")
     vigencia = analisis.get("vigencia") or oferta.get("estado_vigencia") or "unknown"
-    tramo_vigencia = {"open": 0, "unknown": 1, "closed": 2}.get(vigencia, 1)
+    tramo_vigencia = {"open": 0, "stale": 1, "unknown": 2, "closed": 3}.get(vigencia, 2)
     dias = dias_desde(oferta.get("publicado_en"))
     tramo_dias = 0 if dias is None else (0 if dias <= 7 else 1 if dias <= 14 else 2 if dias <= 30 else 3)
     modalidad = analisis.get("modalidad") or oferta.get("modalidad") or "unknown"

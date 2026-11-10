@@ -685,12 +685,23 @@ def clasificar(conn: sqlite3.Connection, tarea: dict, perfil: dict,
         "salario": json.loads(job["salario_json"]) if job["salario_json"] else None,
         "publicado_en": job["publicado_en"],
         "fuente_principal": job["fuente_principal"],
-        "tipo_contrato": (obs["categoria_fuente"] if obs else None),
+        # C04: `categoria_fuente` es la categoría que declara la fuente y
+        # `skills` su evidencia estructurada. Antes la categoría se enviaba como
+        # `tipo_contrato` y `_modalidad` la leía como declaración de modalidad:
+        # dos campos distintos mezclados. La tabla `observations` no guarda tipo
+        # de empleo, así que no se inventa uno.
+        "categoria_fuente": (obs["categoria_fuente"] if obs else None),
+        "skills": (obs["skills"] if obs else None),
+        "tipo_contrato": None,
     }
     evaluacion = rules.evaluar(oferta, perfil["datos"])
     if job["estado_vigencia"] == "closed":
         evaluacion.vigencia = "closed"
-    alertar = _corresponde_aviso(evaluacion)
+    try:
+        umbral_aviso = float(db.ajuste(conn, "umbral_aviso", str(config.UMBRAL_AVISO)))
+    except (TypeError, ValueError):
+        umbral_aviso = config.UMBRAL_AVISO
+    alertar = _corresponde_aviso(evaluacion, umbral_aviso)
     # Clave estable por oferta y canal: un cambio cosmético no genera otro aviso.
     clave_aviso = f"{job['id']}|inbox|alta"
     payload = {
@@ -760,14 +771,23 @@ def clasificar(conn: sqlite3.Connection, tarea: dict, perfil: dict,
     }
 
 
-def _corresponde_aviso(evaluacion: rules.Evaluacion) -> bool:
+def _corresponde_aviso(evaluacion: rules.Evaluacion,
+                       umbral: float | None = None) -> bool:
+    """Alerta sólo con evidencia suficiente: puntaje, cobertura, confianza y vigencia.
+
+    S01: el umbral se recibe de los ajustes (`umbral_aviso`) para poder
+    calibrarlo sin editar reglas. No se relaja ninguna otra condición: una oferta
+    con dudas decisivas, confianza baja o vigencia sin confirmar nunca alerta.
+    """
+    if umbral is None:
+        umbral = config.UMBRAL_AVISO
     return (
         evaluacion.elegibilidad == "eligible"
         and evaluacion.compatibilidad is not None
-        and evaluacion.compatibilidad >= 75
+        and evaluacion.compatibilidad >= umbral
         and evaluacion.confianza != "baja"
         and evaluacion.vigencia == "open"
-        and evaluacion.cobertura >= 0.7
+        and evaluacion.cobertura >= config.COBERTURA_MINIMA_AVISO
         and not evaluacion.decisivas
     )
 

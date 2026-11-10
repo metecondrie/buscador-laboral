@@ -41,6 +41,22 @@ INTERVALO_HORAS = 12
 RESPALDOS_A_CONSERVAR = 14
 DIAS_INCIDENTE_ABIERTO = 7
 
+# --- Calibración de alertas (Fase 1F · S01) --------------------------------
+# El puntaje de un aviso que cumple todo lo que declara pero no expresa
+# experiencia ni formación no llegaba a 75 con el denominador completo: el techo
+# real era 73. El umbral se separa del cálculo para poder calibrarlo sin tocar
+# las reglas, y la alerta exige cobertura y confianza además del puntaje.
+#
+# 65 y no 75: el puntaje se calcula sobre todo el peso aplicable, así que un
+# aviso que cumple TODO lo que declara pero no expresa experiencia ni formación
+# tiene un techo de 73 si declara el nivel de inglés (25 categoría + 40
+# habilidades + 8 idioma) y de 69 si el aviso está en inglés sin declararlo (el
+# idioma queda en crédito parcial). Con 75 ninguna de esas ofertas podía alertar
+# nunca. El techo no se toca regalando puntos por ausencia de datos: se calibra
+# el umbral, y la alerta sigue exigiendo elegibilidad, cobertura y confianza.
+UMBRAL_AVISO = 65.0
+COBERTURA_MINIMA_AVISO = 0.7
+
 # Ajustes por defecto persistidos en la tabla `settings`.
 #
 # La cascada arranca con los tres modelos gratuitos soportados. Vive acá como
@@ -68,6 +84,7 @@ AJUSTES_POR_DEFECTO = {
     "ia_cuenta_cloudflare": "",
     "ia_analisis_por_corrida": "25",
     "ia_credencial_activa": "",
+    "umbral_aviso": str(int(UMBRAL_AVISO)),
 }
 
 
