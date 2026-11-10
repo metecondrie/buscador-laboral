@@ -219,20 +219,33 @@ _PISTAS: list[tuple[str, tuple[str, ...], tuple[str, ...]]] = [
     ("Customer Support", ("customer support", "customer success", "client success",
                           "client service", "customer service", "technical support",
                           "support specialist", "help desk", "livechat", "live chat",
-                          "atencion al cliente", "soporte tecnico", "customer happiness"),
+                          "atencion al cliente", "soporte tecnico", "customer happiness",
+                          # «Customer Care Specialist - Spend - FinTech or Accounting
+                          # Platforms» es soporte: sin esta pista, la palabra
+                          # «Accounting» del título lo mandaba a fuera de perfil.
+                          "customer care"),
      ("customer support", "customer service", "atencion al cliente")),
 ]
 
-#: Pistas de cuerpo que son HERRAMIENTA, no responsabilidad. «Power BI» en el
-#: aviso de un puesto de soporte es un tablero que se consulta, no el trabajo:
-#: por sí sola no otorga categoría (Fase 1F · C02).
-_PISTAS_CUERPO_HERRAMIENTA = {"power bi", "business intelligence"}
+#: Pistas de cuerpo DÉBILES: herramientas y palabras genéricas que aparecen en
+#: cualquier aviso corporativo. «Power BI» en un puesto de soporte es un tablero
+#: que se consulta (Fase 1F · C02); «reporting» en un aviso de RR. HH. son los
+#: reportes de otra persona (reproducido el 2026-11-10: HR Assistant y
+#: Accounting Assistant clasificados como Reporting Analyst). Sólo otorgan
+#: categoría si el TÍTULO ya es afín a datos.
+_PISTAS_CUERPO_DEBILES = {"power bi", "business intelligence", "reporting", "reportes"}
 
 _TITULO_FUERA_DE_PERFIL = re.compile(
     r"\b(engineer|engineering|developer|programmer|architect|designer|scientist|"
     r"accountant|bookkeeper|nurse|physician|lawyer|paralegal|driver|warehouse|"
     r"electrician|plumber|mechanic|teacher|professor|cook|chef|waiter|cleaner|"
-    r"recruiter|talent acquisition|seo|copywriter|graphic)\b"
+    r"recruiter|talent acquisition|seo|copywriter|graphic|"
+    # Fase 1G: RR. HH. y finanzas no son ninguna de las diez categorías. Antes
+    # entraban por una palabra suelta del cuerpo («reporting») y quedaban como
+    # Reporting Analyst. Se evalúan después de las pistas de título, así que
+    # «HR Data Analyst» o «Financial Data Analyst» siguen siendo Data Analyst.
+    r"hr|human resources|people operations|recruiting|recruitment|"
+    r"finance|financial|accounting|payroll|tax|audit|treasury|controller)\b"
 )
 
 # Para aceptar una categoría detectada sólo en el cuerpo, el título tiene que
@@ -259,17 +272,24 @@ _SENIORITY_CUERPO = re.compile(
 _REQ_SENIORITY = re.compile(
     r"\b(?:required|mandatory|must|minimum|minimo|excluyente|obligatorio|"
     r"se requiere|requiere|is a must|at least|or above)\b")
-_SENIORITY_DUDA = re.compile(r"\b(manager|supervisor|jefe|jefa|coordinador|coordinadora|"
-                             r"mid level|midlevel|intermediate|semi senior|ssr)\b")
+#: Gestión de personas: un «manager» o un «coordinador» manda gente.
+_SENIORITY_DUDA = re.compile(
+    r"\b(manager|supervisor|jefe|jefa|coordinador|coordinadora)\b")
+#: Banda intermedia declarada por la fuente o el título. NO es gestión: un
+#: «Mid-level» en el campo `seniority` de Himalayas convertía a un Operations
+#: Assistant en «responsabilidad de gestión» (reproducido el 2026-11-10).
+_SENIORITY_INTERMEDIA = re.compile(
+    r"\b(mid level|midlevel|intermediate|semi senior|ssr|senior level)\b")
 #: E02: «manager» en estos títulos describe la relación con clientes o una
 #: cuenta, no la gestión de personas. Sólo se apartan si el aviso lo confirma.
 _GESTION_DE_CUENTA = re.compile(
     r"\b(?:account|customer success|client success|community|social media|partner|"
     r"relationship|customer|client)\s+manager\b")
+#: Evidencia de gestionar PERSONAS. «Mentor» o «coaching» no alcanzan: son
+#: tareas habituales de un puesto individual que acompaña a compañeros.
 _EVIDENCIA_GESTION = re.compile(
     r"\b(?:direct reports?|reports? to you|manage (?:a |the )?team|team of \d+|"
-    r"people management|performance reviews?|hiring|headcount|supervis\w*|"
-    r"coaching|mentor\w*)\b")
+    r"people management|performance reviews?|hiring|headcount|supervis\w*)\b")
 
 _SKILLS = [
     "sql", "python", "excel", "power bi", "tableau", "looker", "postgresql",
@@ -351,7 +371,7 @@ _TITULO_SOPORTE_CONTEXTO = re.compile(
     r"|\bcx\s+(?:associate|specialist|agent|representative|rep|advisor)\b"
     r"|\bcustomer\s+experience\s+(?:associate|specialist|agent|representative|advisor)\b"
     r"|\bcustomer\s+(?:care|success)\s+(?:associate|specialist|agent|representative|"
-    r"advisor|manager)\b"
+    r"advisor|manager|producer)\b"
     r"|\bclient\s+(?:support|service|success)(?:\s+(?:associate|specialist|agent|"
     r"representative|advisor|manager))?\b"
     r"|\bsupport\s+(?:associate|agent|specialist|representative)\b"
@@ -1377,7 +1397,7 @@ def _categoria_por_cuerpo(en_titulo: str, en_texto: str,
         for pista in pistas_cuerpo:
             if not re.search(rf"\b{re.escape(pista)}\b", en_texto):
                 continue
-            if pista in _PISTAS_CUERPO_HERRAMIENTA and not afin_datos:
+            if pista in _PISTAS_CUERPO_DEBILES and not afin_datos:
                 continue
             candidatas.append((categoria, pista))
             break
@@ -2072,6 +2092,17 @@ def _experiencia(titulo: str, texto: str, declarado: str | None,
             pass
         else:
             return "duda", f"el título implica responsabilidad de gestión: {titulo}", None
+
+    intermedia = _SENIORITY_INTERMEDIA.search(base)
+    if intermedia:
+        # Un nivel intermedio no es gestión: es una banda por encima de junior.
+        # Se informa de dónde viene para no atribuirlo al título cuando lo
+        # declaró la fuente en su campo `seniority`.
+        en_titulo = _SENIORITY_INTERMEDIA.search(normalizar(titulo))
+        origen = "el título" if en_titulo else "la fuente"
+        return ("duda",
+                f"{origen} declara un nivel {intermedia.group(0)}: revisar si "
+                f"encaja con un perfil junior", None)
 
     # Seniority obligatorio también puede estar en el cuerpo, no sólo en el
     # título. Exige un marcador de obligatoriedad: «senior stakeholders» NO.

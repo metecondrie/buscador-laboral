@@ -96,7 +96,7 @@ def test_relevancia_se_mide_por_fuente_no_por_volumen(entorno, perfil_id):
         for f in conn.execute("SELECT source_id, relevantes FROM source_runs WHERE run_id=?", (corrida,))
     }
     assert filas == {"F01": 3, "F02": 0}
-    assert config.RULES_VERSION == "rules-3.2.0"
+    assert config.RULES_VERSION == "rules-3.3.0"
 
 
 def test_limite_se_respeta_entre_particiones():

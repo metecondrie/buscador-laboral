@@ -314,3 +314,80 @@ def test_s02_sin_habilidades_no_hay_puntaje():
     e = evaluar(titulo="Data Analyst", texto="Remote. Join our team.")
     assert e.compatibilidad is None
     assert e.requisitos["escala_puntaje"] == "sin_datos"
+
+
+# --- Fase 1G · defectos reproducidos el 2026-11-10 -------------------------
+
+@pytest.mark.parametrize("titulo", [
+    "HR Assistant (Argentina)",
+    "Accounting Assistant",
+    "Financial Analyst",
+    "Payroll Specialist",
+])
+def test_g1_rr_hh_y_finanzas_no_son_reporting_analyst(titulo):
+    """«reporting» en el cuerpo de un aviso de RR. HH. no da categoría.
+
+    Antes: HR Assistant y Accounting Assistant quedaban como Reporting Analyst
+    porque el aviso decía «reporting». RR. HH. y finanzas no son ninguna de las
+    diez categorías del perfil.
+    """
+    categoria, motivo, _ = rules.categoria_de(
+        titulo, "Support the team with payroll, HR systems and monthly reporting.",
+        PERFIL["categorias"])
+    assert categoria is None
+    assert "fuera de las categorías" in motivo
+
+
+def test_g1_un_titulo_de_datos_con_area_sigue_siendo_data_analyst():
+    """Las pistas de título ganan: «HR Data Analyst» es Data Analyst."""
+    categoria, _, origen = rules.categoria_de(
+        "HR Data Analyst", "Reporting and dashboards. SQL required.",
+        PERFIL["categorias"])
+    assert categoria == "Data Analyst"
+    assert origen == "titulo"
+
+
+def test_g1_reporting_analyst_de_titulo_sigue_funcionando():
+    categoria, _, origen = rules.categoria_de(
+        "Reporting Analyst", "Weekly reporting and dashboards.",
+        PERFIL["categorias"])
+    assert categoria == "Reporting Analyst"
+    assert origen == "titulo"
+
+
+def test_g1_reporting_generico_no_da_categoria_sin_titulo_afin():
+    categoria, _, _ = rules.categoria_de(
+        "Partner Operations Manager", "Own reporting and monthly packs.",
+        PERFIL["categorias"])
+    assert categoria is None
+
+
+def test_g2_mid_level_declarado_no_es_responsabilidad_de_gestion():
+    """Un «Mid-level» de la fuente es una banda, no gestión de personas.
+
+    Antes el campo `seniority` de Himalayas («Mid-level») se normalizaba a
+    «mid level» y el motor informaba «el título implica responsabilidad de
+    gestión» sobre un Operations Assistant.
+    """
+    e = evaluar(titulo="Operations Assistant (Construction Support)",
+                texto="Administrative support. C1 English required.",
+                seniority="Mid-level")
+    assert e.requisitos["estado_experiencia"] == "duda"
+    assert any("nivel mid level" in i for i in e.incertidumbres)
+    assert not any("gestión" in i for i in e.incertidumbres)
+
+
+def test_g2_la_gestion_real_sigue_marcandose():
+    e = evaluar(titulo="Customer Success Manager", texto=(
+        CUERPO_SOPORTE + " You will have 5 direct reports and run performance reviews."),
+        seniority="Mid-level")
+    assert e.requisitos["estado_experiencia"] == "duda"
+    assert any("gestión" in i for i in e.incertidumbres)
+
+
+def test_g2_mentor_y_coaching_no_son_gestion_de_personas():
+    e = evaluar(titulo="Customer Success Manager", texto=(
+        CUERPO_SOPORTE + " Mentor junior teammates and coach the team on best practices."),
+        seniority=None)
+    assert not any("gestión" in i for i in e.incertidumbres)
+

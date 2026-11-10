@@ -14,11 +14,11 @@ from pathlib import Path
 
 APP_NOMBRE = "BuscadorLaboral"
 VERSION_APP = "0.2.1"
-#: 3.2.0 (2026-11-10): correcciones C01-C06, S01-S02, T01-T03, E01-E02,
-#: L01-L02 y V01 del informe de revisión. Cambiar la versión es lo que
-#: hace que `sincronizar_reglas` vuelva a clasificar el catálogo: sin
-#: esto, las ofertas conservarían el veredicto viejo indefinidamente.
-RULES_VERSION = "rules-3.2.0"
+#: 3.3.0 (2026-11-10): separa «nivel intermedio» de «gestión de personas» y
+#: deja de otorgar categoría por palabras genéricas del cuerpo («reporting»).
+#: Cambiar la versión es lo que hace que `sincronizar_reglas` vuelva a
+#: clasificar el catálogo: sin esto, las ofertas conservarían el veredicto viejo.
+RULES_VERSION = "rules-3.3.0"
 AGRUPACION_VERSION = "identidad-1.1.0"
 
 HOST_LOCAL = "127.0.0.1"
