@@ -173,7 +173,7 @@ class Lever(_BaseATS):
                 extra={"texto_plano": puesto.get("descriptionPlain") or html_a_texto(descripcion),
                        "tablero": org, "equipo": categorias.get("team"),
                        "tipo_contrato": categorias.get("commitment"),
-                       "remoto": puesto.get("workplaceType")},
+                       "workplaceType": puesto.get("workplaceType")},
                 field_status={
                     "empresa": "known",
                     "region": "known" if ubicacion else "unknown",
@@ -228,7 +228,7 @@ class Ashby(_BaseATS):
                 publicado_en=publicado,
                 region=ubicacion or None,
                 extra={"texto_plano": puesto.get("descriptionPlain") or html_a_texto(descripcion),
-                       "tablero": org, "remoto": bool(puesto.get("isRemote")),
+                       "tablero": org, "isRemote": puesto.get("isRemote"),
                        "tipo_contrato": puesto.get("employmentType"),
                        "equipo": puesto.get("team")},
                 field_status={

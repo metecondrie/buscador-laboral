@@ -11,7 +11,7 @@ from . import config
 
 ESQUEMA = Path(__file__).with_name("schema.sql")
 MIGRACIONES = Path(__file__).with_name("migrations")
-VERSION_ESQUEMA = 11
+VERSION_ESQUEMA = 12
 
 
 def conectar(ruta: Path | None = None) -> sqlite3.Connection:

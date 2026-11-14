@@ -159,7 +159,8 @@ def cerrar_source_run(conn: sqlite3.Connection, source_run_id: int, resultado: R
         )
 
 
-def ingestar(conn: sqlite3.Connection, resultado: ResultadoFuente, profile_version_id: int | None) -> dict:
+def ingestar(conn: sqlite3.Connection, resultado: ResultadoFuente,
+             profile_version_id: int | None, corrida_id: int | None = None) -> dict:
     """Persiste el lote válido y encola la clasificación en una transacción breve."""
     stats = {"nuevas": 0, "actualizadas": 0, "sin_cambios": 0, "jobs_nuevos": 0, "encoladas": 0, "vinculadas": 0}
     if not resultado.observaciones:
@@ -167,12 +168,13 @@ def ingestar(conn: sqlite3.Connection, resultado: ResultadoFuente, profile_versi
 
     with db.transaccion(conn):
         for obs in resultado.observaciones:
-            _persistir_observacion(conn, obs, stats, profile_version_id)
+            _persistir_observacion(conn, obs, stats, profile_version_id, corrida_id)
     return stats
 
 
 def _persistir_observacion(conn: sqlite3.Connection, obs: Observacion, stats: dict,
-                           profile_version_id: int | None) -> None:
+                           profile_version_id: int | None,
+                           corrida_id: int | None = None) -> None:
     # Las fuentes publican entidades HTML en títulos y empresas ("&amp;").
     # Se desescapan una vez, al entrar, para no arrastrarlas a la vista ni al hash.
     obs.titulo = html.unescape(obs.titulo or "").strip()
@@ -180,6 +182,12 @@ def _persistir_observacion(conn: sqlite3.Connection, obs: Observacion, stats: di
     obs.region = html.unescape(obs.region).strip() if obs.region else None
 
     texto = obs.extra.get("texto_plano") or ""
+    expira_en = obs.extra.get("expira_en")
+    modalidad = {
+        clave: obs.extra.get(clave)
+        for clave in ("workplaceType", "isRemote", "remoto", "tipo_contrato")
+        if obs.extra.get(clave) is not None
+    }
     semantic = {
         "titulo": normalizar(obs.titulo),
         "empresa": normalizar(obs.empresa),
@@ -187,6 +195,8 @@ def _persistir_observacion(conn: sqlite3.Connection, obs: Observacion, stats: di
         "texto": normalizar(texto)[:4000],
         "salario": obs.salario,
         "publicado": (obs.publicado_en or "")[:10],
+        "expira": expira_en,
+        "modalidad": modalidad,
     }
     content_hash = hash_semantico(semantic)
     ahora = config.ahora_utc()
@@ -202,8 +212,8 @@ def _persistir_observacion(conn: sqlite3.Connection, obs: Observacion, stats: di
             """INSERT INTO observations (source_id, external_id, url, url_final, titulo, empresa,
                    descripcion_texto, publicado_en, publicado_origen, detectado_en, content_hash,
                    parser_version, field_status_json, evidencia_json,
-                   seniority, skills, categoria_fuente)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                   seniority, skills, categoria_fuente, expira_en, modalidad_json, corrida_id)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 obs.source_id, obs.external_id, obs.url, obs.url,
                 obs.titulo, obs.empresa, texto, obs.publicado_en, "feed",
@@ -211,6 +221,7 @@ def _persistir_observacion(conn: sqlite3.Connection, obs: Observacion, stats: di
                 json.dumps(obs.field_status, ensure_ascii=False),
                 json.dumps(obs.evidencia, ensure_ascii=False),
                 obs.seniority, obs.skills, obs.categoria_fuente,
+                expira_en, json.dumps(modalidad, ensure_ascii=False), corrida_id,
             ),
         )
         observation_id = int(cur.lastrowid)
@@ -222,17 +233,25 @@ def _persistir_observacion(conn: sqlite3.Connection, obs: Observacion, stats: di
     else:
         observation_id = int(fila["id"])
         if fila["content_hash"] == content_hash:
+            conn.execute(
+                """UPDATE observations SET detectado_en=?, expira_en=?,
+                       modalidad_json=?, corrida_id=? WHERE id=?""",
+                (ahora, expira_en, json.dumps(modalidad, ensure_ascii=False),
+                 corrida_id, observation_id),
+            )
             stats["sin_cambios"] += 1
         else:
             conn.execute(
                 """UPDATE observations SET titulo=?, empresa=?, descripcion_texto=?, publicado_en=?,
                        detectado_en=?, content_hash=?, field_status_json=?, evidencia_json=?,
-                       seniority=?, skills=?, categoria_fuente=? WHERE id=?""",
+                       seniority=?, skills=?, categoria_fuente=?, expira_en=?,
+                       modalidad_json=?, corrida_id=? WHERE id=?""",
                 (
                     obs.titulo, obs.empresa, texto, obs.publicado_en, ahora, content_hash,
                     json.dumps(obs.field_status, ensure_ascii=False),
                     json.dumps(obs.evidencia, ensure_ascii=False),
-                    obs.seniority, obs.skills, obs.categoria_fuente, observation_id,
+                    obs.seniority, obs.skills, obs.categoria_fuente, expira_en,
+                    json.dumps(modalidad, ensure_ascii=False), corrida_id, observation_id,
                 ),
             )
             conn.execute(
