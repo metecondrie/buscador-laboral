@@ -679,9 +679,10 @@ def medir_relevancia(conn: sqlite3.Connection, run_id: int) -> dict[str, dict]:
                JOIN observations o ON o.id = jo.observation_id
                JOIN analyses a ON a.job_id = jo.job_id AND a.obsoleto = 0
                WHERE a.run_id = ?
-                 AND a.elegibilidad IN ('eligible','doubtful')
+                AND o.corrida_id = ?
+                AND a.elegibilidad IN ('eligible','doubtful')
                GROUP BY o.source_id""",
-            (run_id,),
+            (run_id, run_id),
         ).fetchall()
     }
     duplicadas = {
