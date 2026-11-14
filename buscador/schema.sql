@@ -1,4 +1,4 @@
-PRAGMA user_version = 11;
+PRAGMA user_version = 12;
 
 CREATE TABLE IF NOT EXISTS sources (
     source_id        TEXT PRIMARY KEY,
@@ -81,6 +81,9 @@ CREATE TABLE IF NOT EXISTS observations (
     seniority        TEXT,
     skills           TEXT,
     categoria_fuente TEXT,
+    expira_en        TEXT,
+    modalidad_json   TEXT,
+    corrida_id       INTEGER REFERENCES runs(id),
     UNIQUE (source_id, external_id)
 );
 

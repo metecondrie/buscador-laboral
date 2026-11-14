@@ -20,6 +20,29 @@ _CODIGOS_TERMINALES = {"access_restricted"}
 #: Corridas consecutivas con error terminal para abrir el circuito de la fuente.
 _CORRIDAS_PARA_CIRCUITO = 2
 
+
+def _modalidad_estructurada(obs: sqlite3.Row | None) -> str | None:
+    """Convierte sólo evidencia estructurada de la fuente en texto de reglas."""
+    if obs is None or not obs["modalidad_json"]:
+        return None
+    try:
+        datos = json.loads(obs["modalidad_json"])
+    except (TypeError, json.JSONDecodeError):
+        return None
+    partes = [
+        str(datos.get("tipo_contrato") or ""),
+        str(datos.get("workplaceType") or ""),
+    ]
+    remoto = datos.get("isRemote", datos.get("remoto"))
+    if remoto is True:
+        partes.append("remote")
+    elif remoto is False:
+        partes.append("onsite")
+    elif isinstance(remoto, str) and remoto.strip():
+        partes.append(remoto)
+    texto = " ".join(p for p in partes if p.strip())
+    return texto or None
+
 PERFIL_DEMO = {  # sólo para pruebas y demostración
     
     "version": "perfil-demo-1",
@@ -379,7 +402,7 @@ def correr(causa: str = "manual", limite: int | None = None,
                         source_id=sid, estado="network_error", error_code="network_error",
                         error_msg=f"excepción no controlada: {exc!r}",
                     )
-            stats = ingest.ingestar(conn, resultado, perfil["id"])
+            stats = ingest.ingestar(conn, resultado, perfil["id"], run_id)
             ingest.cerrar_source_run(conn, sr_id, resultado, stats["nuevas"],
                                      stats["actualizadas"], resultado.cursor_nuevo)
             if resultado.estado == "circuito_abierto":
@@ -655,8 +678,10 @@ def medir_relevancia(conn: sqlite3.Connection, run_id: int) -> dict[str, dict]:
                FROM job_observations jo
                JOIN observations o ON o.id = jo.observation_id
                JOIN analyses a ON a.job_id = jo.job_id AND a.obsoleto = 0
-               WHERE a.elegibilidad IN ('eligible','doubtful')
-               GROUP BY o.source_id"""
+               WHERE a.run_id = ?
+                 AND a.elegibilidad IN ('eligible','doubtful')
+               GROUP BY o.source_id""",
+            (run_id,),
         ).fetchall()
     }
     duplicadas = {
@@ -665,8 +690,10 @@ def medir_relevancia(conn: sqlite3.Connection, run_id: int) -> dict[str, dict]:
             """SELECT o.source_id AS source_id, COUNT(*) AS n
                FROM job_observations jo
                JOIN observations o ON o.id = jo.observation_id
-               WHERE jo.tipo_match = 'debil'
-               GROUP BY o.source_id"""
+               WHERE o.corrida_id = ?
+                 AND jo.tipo_match = 'debil'
+               GROUP BY o.source_id""",
+            (run_id,),
         ).fetchall()
     }
     resultado: dict[str, dict] = {}
@@ -725,6 +752,7 @@ def clasificar(conn: sqlite3.Connection, tarea: dict, perfil: dict,
         "seniority": obs["seniority"] if obs else None,
         "salario": json.loads(job["salario_json"]) if job["salario_json"] else None,
         "publicado_en": job["publicado_en"],
+        "expira_en": obs["expira_en"] if obs else None,
         "fuente_principal": job["fuente_principal"],
         # C04: `categoria_fuente` es la categoría que declara la fuente y
         # `skills` su evidencia estructurada. Antes la categoría se enviaba como
@@ -733,7 +761,7 @@ def clasificar(conn: sqlite3.Connection, tarea: dict, perfil: dict,
         # de empleo, así que no se inventa uno.
         "categoria_fuente": (obs["categoria_fuente"] if obs else None),
         "skills": (obs["skills"] if obs else None),
-        "tipo_contrato": None,
+        "tipo_contrato": _modalidad_estructurada(obs),
     }
     evaluacion = rules.evaluar(oferta, perfil["datos"])
     if job["estado_vigencia"] == "closed":
